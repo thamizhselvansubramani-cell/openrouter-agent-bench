@@ -1,0 +1,52 @@
+id: binary-search-boundary
+suite: coding
+title: Fix off-by-one bugs in boundary binary search
+category: algorithms
+difficulty: 2
+target_file: search_bounds.py
+max_turns: 1
+timeout_s: 300
+prompt: 'You are given a small Python project with a bug or missing behavior.
+
+
+  Problem: find_rightmost returns wrong indices for repeated values, which also breaks
+  count_occurrences.
+
+
+  Files currently in the workspace:
+
+  - search_bounds.py
+
+
+
+  '
+files:
+  search_bounds.py: "\"\"\"Binary search helpers for sorted lists.\"\"\"\n\n\ndef\
+    \ find_leftmost(values: list[int], target: int) -> int:\n    \"\"\"Return the\
+    \ index of the first element equal to target, or -1.\"\"\"\n    lo, hi = 0, len(values)\n\
+    \    while lo < hi:\n        mid = (lo + hi) // 2\n        if values[mid] < target:\n\
+    \            lo = mid + 1\n        else:\n            hi = mid\n    if lo < len(values)\
+    \ and values[lo] == target:\n        return lo\n    return -1\n\n\ndef find_rightmost(values:\
+    \ list[int], target: int) -> int:\n    \"\"\"Return the index of the last element\
+    \ equal to target, or -1.\"\"\"\n    lo, hi = 0, len(values) - 1\n    while lo\
+    \ <= hi:\n        mid = (lo + hi) // 2\n        if values[mid] < target:\n   \
+    \         lo = mid + 1\n        else:\n            hi = mid - 1\n    if lo > 0\
+    \ and values[lo - 1] == target:\n        return lo + 1\n    return -1\n\n\ndef\
+    \ count_occurrences(values: list[int], target: int) -> int:\n    \"\"\"Count occurrences\
+    \ of target using the two boundary searches.\"\"\"\n    left = find_leftmost(values,\
+    \ target)\n    if left == -1:\n        return 0\n    right = find_rightmost(values,\
+    \ target)\n    return right - left + 1\n"
+grader:
+  type: unit_tests
+  tests:
+    test_search_bounds.py: "from search_bounds import count_occurrences, find_leftmost,\
+      \ find_rightmost\n\n\ndef test_leftmost_basic():\n    assert find_leftmost([1,\
+      \ 2, 2, 3], 2) == 1\n\n\ndef test_rightmost_basic():\n    assert find_rightmost([1,\
+      \ 2, 2, 3], 2) == 2\n\n\ndef test_missing_value():\n    assert find_leftmost([1,\
+      \ 3, 5], 4) == -1\n    assert find_rightmost([1, 3, 5], 0) == -1\n\n\ndef test_single_element():\n\
+      \    assert find_leftmost([7], 7) == 0\n    assert find_rightmost([7], 7) ==\
+      \ 0\n\n\ndef test_all_same():\n    assert find_leftmost([5, 5, 5, 5], 5) ==\
+      \ 0\n    assert find_rightmost([5, 5, 5, 5], 5) == 3\n\n\ndef test_count():\n\
+      \    assert count_occurrences([1, 2, 2, 2, 3], 2) == 3\n    assert count_occurrences([1,\
+      \ 2, 3], 9) == 0\n\n\ndef test_empty():\n    assert count_occurrences([], 1)\
+      \ == 0\n"

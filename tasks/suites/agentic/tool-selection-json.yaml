@@ -1,0 +1,28 @@
+id: tool-selection-json
+suite: agentic
+title: Select the right tool and emit a JSON call
+category: tool_use
+difficulty: 2
+prompt: 'You have exactly these tools:
+
+  - `search_orders(customer_id: str, since: str)`
+
+  - `refund_order(order_id: str, amount_cents: int)`
+
+  - `send_email(to: str, subject: str)`
+
+
+  Goal: issue a refund of $12.50 on order `ord_88213`.
+
+
+  Respond with a single JSON object naming the tool and its arguments, e.g. {"tool": "...", "arguments":
+  {...}}. Amounts are in cents.'
+files: {}
+grader:
+  type: keyed_facts
+  facts:
+    tool: refund_order
+    order_id: ord_88213
+    amount: '1250'
+max_turns: 1
+timeout_s: 120.0

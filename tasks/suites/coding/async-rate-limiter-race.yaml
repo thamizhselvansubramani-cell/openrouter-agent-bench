@@ -1,0 +1,54 @@
+id: async-rate-limiter-race
+suite: coding
+title: Fix async race condition in token-bucket limiter
+category: concurrency
+difficulty: 4
+target_file: limiter.py
+max_turns: 1
+timeout_s: 300
+prompt: 'You are given a small Python project with a bug or missing behavior.
+
+
+  Problem: Concurrent callers can both pass the emptiness check before either decrements,
+  admitting more requests than the capacity allows.
+
+
+  Files currently in the workspace:
+
+  - limiter.py
+
+
+
+  '
+files:
+  limiter.py: "\"\"\"Async token-bucket rate limiter.\"\"\"\n\nimport time\n\n\nclass\
+    \ TokenBucketLimiter:\n    \"\"\"Allows at most ``capacity`` acquisitions per\
+    \ ``refill_period`` seconds.\"\"\"\n\n    def __init__(self, capacity: int, refill_period:\
+    \ float = 1.0) -> None:\n        self.capacity = capacity\n        self.refill_period\
+    \ = refill_period\n        self._tokens = float(capacity)\n        self._last_refill\
+    \ = time.monotonic()\n\n    def _refill(self) -> None:\n        now = time.monotonic()\n\
+    \        elapsed = now - self._last_refill\n        if elapsed >= self.refill_period:\n\
+    \            self._tokens = float(self.capacity)\n            self._last_refill\
+    \ = now\n\n    async def acquire(self) -> None:\n        \"\"\"Consume one token;\
+    \ raise RuntimeError when the bucket is empty.\n\n        BUG: the check-then-decrement\
+    \ sequence interleaves between tasks.\n        \"\"\"\n        self._refill()\n\
+    \        if self._tokens < 1:\n            raise RuntimeError(\"rate limit exceeded\"\
+    )\n        await _yield_point()\n        self._tokens -= 1\n\n    @property\n\
+    \    def available_tokens(self) -> float:\n        return self._tokens\n\n\nasync\
+    \ def _yield_point() -> None:\n    import asyncio\n\n    await asyncio.sleep(0)\n"
+grader:
+  type: unit_tests
+  tests:
+    test_limiter.py: "import asyncio\n\nimport pytest\n\nfrom limiter import TokenBucketLimiter\n\
+      \n\n@pytest.mark.asyncio\nasync def test_admits_capacity_requests_only():\n\
+      \    limiter = TokenBucketLimiter(capacity=5, refill_period=3600)\n\n    async\
+      \ def worker():\n        await limiter.acquire()\n\n    results = await asyncio.gather(*[worker()\
+      \ for _ in range(20)], return_exceptions=True)\n    admitted = sum(1 for r in\
+      \ results if not isinstance(r, BaseException))\n    assert admitted == 5\n\n\
+      \n@pytest.mark.asyncio\nasync def test_rejects_when_empty():\n    limiter =\
+      \ TokenBucketLimiter(capacity=1, refill_period=3600)\n    await limiter.acquire()\n\
+      \    with pytest.raises(RuntimeError):\n        await limiter.acquire()\n\n\n\
+      @pytest.mark.asyncio\nasync def test_refills_after_period():\n    limiter =\
+      \ TokenBucketLimiter(capacity=2, refill_period=0.05)\n    await limiter.acquire()\n\
+      \    await limiter.acquire()\n    await asyncio.sleep(0.08)\n    await limiter.acquire()\n\
+      \    assert limiter.available_tokens == 1.0\n"

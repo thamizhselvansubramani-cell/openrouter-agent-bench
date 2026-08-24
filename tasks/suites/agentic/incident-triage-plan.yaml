@@ -1,0 +1,22 @@
+id: incident-triage-plan
+suite: agentic
+title: Order the remediation steps for a failing deploy
+category: planning
+difficulty: 2
+prompt: 'You are the on-call engineer. A new deploy of `billing-worker` is crash-looping: readiness probes
+  fail and error rates spiked right after the rollout. You can roll back, inspect logs, and page the owner.
+
+
+  Produce a short ordered remediation plan. Your answer MUST mention, using these exact words: `rollback`
+  to restore the last good revision, checking `readiness` probe status, inspecting recent `logs`, and
+  whether to `page` the service owner. Number each step.'
+files: {}
+grader:
+  type: keyed_facts
+  facts:
+    rollback: rollback
+    readiness: readiness
+    logs: logs
+    page: page
+max_turns: 1
+timeout_s: 120.0

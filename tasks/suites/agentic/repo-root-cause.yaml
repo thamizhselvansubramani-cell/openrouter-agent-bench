@@ -1,0 +1,17 @@
+id: repo-root-cause
+suite: agentic
+title: Name the root-cause file from a repo tree and traceback
+category: debugging
+difficulty: 3
+prompt: "Repository tree:\n```\napp/\n  __init__.py\n  handlers/\n    orders.py\n    payments.py\n  services/\n\
+  \    pricing.py\n    tax.py\n```\n\nTraceback:\n```\nFile \"app/services/pricing.py\", line 42, in apply_discount\n\
+  \    return base - base * rate\nTypeError: unsupported operand type(s) for -: 'NoneType' and 'float'\n\
+  ```\n\nWhich single file must be edited to fix the root cause? Answer with the exact relative path."
+files: {}
+grader:
+  type: exact_match
+  expected: app/services/pricing.py
+  case_sensitive: false
+  must_include: []
+max_turns: 1
+timeout_s: 120.0

@@ -1,0 +1,65 @@
+id: cli-argparse-fix
+suite: coding
+title: Fix CLI argument handling
+category: cli
+difficulty: 2
+target_file: csvtool.py
+max_turns: 1
+timeout_s: 300
+prompt: 'You are given a small Python project with a bug or missing behavior.
+
+
+  Problem: The CLI''s --limit flag parses as a string, and summarize() ignores the
+  limit entirely; fix flags and honoring of the limit.
+
+
+  Files currently in the workspace:
+
+  - csvtool.py
+
+
+
+  '
+files:
+  csvtool.py: "\"\"\"CSV column statistics CLI.\n\nUsage: python csvtool.py FILE --column\
+    \ NAME [--delimiter CH] [--limit N]\n\"\"\"\n\nimport argparse\nimport csv\n\n\
+    \ndef build_parser() -> argparse.ArgumentParser:\n    p = argparse.ArgumentParser(prog=\"\
+    csvtool\")\n    p.add_argument(\"file\", help=\"input CSV file\")\n    p.add_argument(\"\
+    --column\", required=True, help=\"column to summarize\")\n    p.add_argument(\"\
+    --delimiter\", default=\",\", help=\"field delimiter\")\n    p.add_argument(\"\
+    --limit\", type=str, default=None, help=\"max rows\")\n    return p\n\n\ndef summarize(path:\
+    \ str, column: str, delimiter: str = \",\", limit=None) -> dict:\n    with open(path,\
+    \ newline=\"\", encoding=\"utf-8\") as fh:\n        reader = csv.DictReader(fh,\
+    \ delimiter=delimiter)\n        values = []\n        for row in reader:\n    \
+    \        raw = (row.get(column) or \"\").strip()\n            if raw:\n      \
+    \          values.append(float(raw))\n    if not values:\n        raise ValueError(f\"\
+    no numeric values in column {column!r}\")\n    return {\n        \"count\": len(values),\n\
+    \        \"min\": min(values),\n        \"max\": max(values),\n        \"mean\"\
+    : sum(values) / len(values),\n    }\n\n\ndef main(argv: list[str] | None = None)\
+    \ -> int:\n    args = build_parser().parse_args(argv)\n    stats = summarize(args.file,\
+    \ args.column, delimiter=args.delimiter, limit=args.limit)\n    print(\n     \
+    \   f\"count={stats['count']} min={stats['min']} \"\n        f\"max={stats['max']}\
+    \ mean={stats['mean']:.4f}\"\n    )\n    return 0\n\n\nif __name__ == \"__main__\"\
+    :\n    raise SystemExit(main())\n"
+grader:
+  type: unit_tests
+  tests:
+    test_csvtool.py: "import pytest\n\nfrom csvtool import build_parser, main, summarize\n\
+      \n\n@pytest.fixture\ndef sample_csv(tmp_path):\n    p = tmp_path / \"data.csv\"\
+      \n    p.write_text(\"name,score\\na,10\\nb,20\\nc,30\\n\", encoding=\"utf-8\"\
+      )\n    return str(p)\n\n\ndef test_defaults(sample_csv):\n    args = build_parser().parse_args([sample_csv,\
+      \ \"--column\", \"score\"])\n    assert args.delimiter == \",\"\n    assert\
+      \ args.limit is None\n\n\ndef test_limit_type_and_effect(sample_csv):\n    args\
+      \ = build_parser().parse_args([sample_csv, \"--column\", \"score\", \"--limit\"\
+      , \"2\"])\n    assert isinstance(args.limit, int)\n    stats = summarize(args.file,\
+      \ args.column, delimiter=args.delimiter, limit=args.limit)\n    assert stats[\"\
+      count\"] == 2\n    assert stats[\"mean\"] == 15.0\n\n\ndef test_limit_zero_means_empty_error(sample_csv):\n\
+      \    with pytest.raises(ValueError):\n        summarize(sample_csv, \"score\"\
+      , limit=0)\n\n\ndef test_required_column(sample_csv):\n    with pytest.raises(SystemExit):\n\
+      \        build_parser().parse_args([sample_csv])\n\n\ndef test_main_output(sample_csv,\
+      \ capsys):\n    rc = main([sample_csv, \"--column\", \"score\"])\n    assert\
+      \ rc == 0\n    out = capsys.readouterr().out\n    assert \"count=3\" in out\
+      \ and \"mean=20.0000\" in out\n\n\ndef test_semicolon_delimiter(tmp_path):\n\
+      \    p = tmp_path / \"semi.csv\"\n    p.write_text(\"name;score\\na;5\\nb;15\\\
+      n\", encoding=\"utf-8\")\n    stats = summarize(str(p), \"score\", delimiter=\"\
+      ;\")\n    assert stats[\"mean\"] == 10\n"

@@ -1,0 +1,55 @@
+id: http-client-refactor
+suite: coding
+title: Refactor transport without breaking the public interface
+category: api-design
+difficulty: 3
+target_file: weather_client.py
+max_turns: 1
+timeout_s: 300
+prompt: 'You are given a small Python project with a bug or missing behavior.
+
+
+  Problem: Route all public methods through one shared `_request` helper while keeping
+  every documented public behavior identical, including the request_count accounting.
+
+
+  Files currently in the workspace:
+
+  - weather_client.py
+
+
+
+  '
+files:
+  weather_client.py: "\"\"\"Tiny weather lookup client.\n\nPublic interface (must\
+    \ remain stable):\n\n- ``current(city)`` returns a dict with keys ``city`` and\
+    \ ``temp_c``.\n- ``forecast(city, days)`` returns a list of dicts with ``day``\
+    \ and\n  ``temp_c``, of length ``days``; raises ValueError when days < 1.\n- ``is_available``\
+    \ is a bool property.\n\"\"\"\n\n\nclass WeatherClient:\n    def __init__(self,\
+    \ base_url: str = \"https://api.example.com\", timeout: float = 10.0) -> None:\n\
+    \        self.base_url = base_url\n        self.timeout = timeout\n        self.request_count\
+    \ = 0\n\n    def current(self, city: str) -> dict:\n        self.request_count\
+    \ += 1\n        payload = {\"kind\": \"current\", \"city\": city.title(), \"temp_c\"\
+    : 21}\n        return {\"city\": payload[\"city\"], \"temp_c\": payload[\"temp_c\"\
+    ]}\n\n    def forecast(self, city: str, days: int) -> list[dict]:\n        if\
+    \ days < 1:\n            raise ValueError(\"days must be >= 1\")\n        self.request_count\
+    \ += days\n        rows = [{\"kind\": \"forecast\", \"day\": i + 1, \"temp_c\"\
+    : 18 + i} for i in range(days)]\n        return [{\"day\": r[\"day\"], \"temp_c\"\
+    : r[\"temp_c\"]} for r in rows]\n\n    @property\n    def is_available(self) ->\
+    \ bool:\n        return bool(self.base_url)\n"
+grader:
+  type: unit_tests
+  tests:
+    test_weather_client.py: "import inspect\n\nfrom weather_client import WeatherClient\n\
+      \n\ndef test_current_shape():\n    c = WeatherClient()\n    out = c.current(\"\
+      berlin\")\n    assert out == {\"city\": \"Berlin\", \"temp_c\": 21}\n\n\ndef\
+      \ test_forecast_length_and_validation():\n    c = WeatherClient()\n    assert\
+      \ len(c.forecast(\"oslo\", 3)) == 3\n    try:\n        c.forecast(\"oslo\",\
+      \ 0)\n    except ValueError:\n        pass\n    else:\n        raise AssertionError(\"\
+      expected ValueError for days=0\")\n\n\ndef test_request_counting_via_shared_helper():\n\
+      \    c = WeatherClient()\n    c.current(\"paris\")\n    c.forecast(\"paris\"\
+      , 4)\n    assert c.request_count == 5\n\n\ndef test_availability_property():\n\
+      \    assert WeatherClient().is_available is True\n\n\ndef test_public_api_uses_shared_transport():\n\
+      \    members = inspect.getmembers(WeatherClient, inspect.isfunction)\n    assert\
+      \ any(name.startswith(\"_\") and name != \"__init__\" for name, _ in members),\
+      \ (\n        \"public methods must delegate to a private helper\"\n    )\n"

@@ -1,0 +1,55 @@
+id: log-line-parser-regex
+suite: coding
+title: Fix regex log-line parser
+category: regex
+difficulty: 3
+target_file: logparse.py
+max_turns: 1
+timeout_s: 300
+prompt: 'You are given a small Python project with a bug or missing behavior.
+
+
+  Problem: The component pattern swallows colons so messages like ''connection lost:
+  timeout'' are truncated; TRACE lines are wrongly accepted.
+
+
+  Files currently in the workspace:
+
+  - logparse.py
+
+
+
+  '
+files:
+  logparse.py: "\"\"\"Parse structured log lines:\n\n    LEVEL [2026-01-02T03:04:05Z]\
+    \ component: message text here\n\"\"\"\n\nimport re\nfrom dataclasses import dataclass\n\
+    \nLINE_RE = re.compile(\n    r\"^(?P<level>DEBUG|INFO|WARNING|ERROR|TRACE) \\\
+    [(?P<ts>[^]]+)\\] (?P<component>[\\w-]+): (?P<message>.*)$\"\n)\n\n\n@dataclass(frozen=True)\n\
+    class LogLine:\n    level: str\n    timestamp: str\n    component: str\n    message:\
+    \ str\n\n\ndef parse_line(line: str) -> LogLine | None:\n    \"\"\"Parse one line;\
+    \ return None when malformed.\"\"\"\n    m = LINE_RE.match(line.strip())\n   \
+    \ if m is None:\n        return None\n    return LogLine(\n        level=m.group(\"\
+    level\"),\n        timestamp=m.group(\"ts\"),\n        component=m.group(\"component\"\
+    ),\n        message=m.group(\"message\").strip(),\n    )\n\n\ndef parse_lines(text:\
+    \ str) -> list[LogLine]:\n    \"\"\"Parse all well-formed lines, skipping blanks\
+    \ and malformed ones.\"\"\"\n    out = []\n    for raw in text.splitlines():\n\
+    \        parsed = parse_line(raw)\n        if parsed is not None:\n          \
+    \  out.append(parsed)\n    return out\n"
+grader:
+  type: unit_tests
+  tests:
+    test_logparse.py: "from logparse import parse_line, parse_lines\n\n\nSAMPLE =\
+      \ (\n    \"INFO [2026-01-02T03:04:05Z] web: request completed path=/health status=200\\\
+      n\"\n    \"ERROR [2026-01-02T03:04:06Z] db-worker: connection lost: timeout\
+      \ after 30s\\n\"\n    \"garbage line\\n\"\n    \"\\n\"\n    \"DEBUG [2026-01-02T03:04:07Z]\
+      \ scheduler: tick\"\n)\n\n\ndef test_message_with_colons_and_spaces():\n   \
+      \ row = parse_line(\"ERROR [2026-01-02T03:04:06Z] db: connection lost: timeout\
+      \ after 30s\")\n    assert row is not None\n    assert row.message == \"connection\
+      \ lost: timeout after 30s\"\n    assert row.component == \"db\"\n\n\ndef test_malformed_rejected():\n\
+      \    assert parse_line(\"INFO missing-brackets web: hi\") is None\n    assert\
+      \ parse_line(\"TRACE [2026-01-01T00:00:00Z] web: nope\") is None\n    assert\
+      \ parse_line(\"\") is None\n\n\ndef test_multi_line_parse():\n    rows = parse_lines(SAMPLE)\n\
+      \    assert len(rows) == 3\n    assert rows[0].level == \"INFO\"\n    assert\
+      \ rows[1].level == \"ERROR\"\n    assert rows[2].component == \"scheduler\"\n\
+      \n\ndef test_timestamp_preserved():\n    rows = parse_lines(SAMPLE)\n    assert\
+      \ rows[0].timestamp == \"2026-01-02T03:04:05Z\"\n"

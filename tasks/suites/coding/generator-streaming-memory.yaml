@@ -1,0 +1,48 @@
+id: generator-streaming-memory
+suite: coding
+title: Fix memory blowup in streaming generator pipeline
+category: generators
+difficulty: 3
+target_file: stream_stats.py
+max_turns: 1
+timeout_s: 300
+prompt: 'You are given a small Python project with a bug or missing behavior.
+
+
+  Problem: running_mean materializes the whole iterable into a list; it must be a
+  lazy generator that also supports early termination via islice.
+
+
+  Files currently in the workspace:
+
+  - stream_stats.py
+
+
+
+  '
+files:
+  stream_stats.py: "\"\"\"Streaming statistics over large iterables.\"\"\"\n\n\ndef\
+    \ running_mean(iterable):\n    \"\"\"Yield the running mean after each item.\n\
+    \n    Must run in O(1) memory per step and work on infinite iterators.\n    \"\
+    \"\"\n    items = list(iterable)\n    means = []\n    total = 0.0\n    for i,\
+    \ value in enumerate(items, start=1):\n        total += float(value)\n       \
+    \ means.append(total / i)\n    return means\n\n\ndef chunked(iterable, size):\n\
+    \    \"\"\"Yield lists of up to `size` consecutive items.\"\"\"\n    if size <\
+    \ 1:\n        raise ValueError(\"size must be >= 1\")\n    buf = []\n    for item\
+    \ in iterable:\n        buf.append(item)\n        if len(buf) == size:\n     \
+    \       yield buf\n            buf = []\n    if buf:\n        yield buf\n"
+grader:
+  type: unit_tests
+  tests:
+    test_stream_stats.py: "from itertools import count, islice\n\nimport pytest\n\n\
+      from stream_stats import chunked, running_mean\n\n\ndef test_running_mean_values():\n\
+      \    assert list(running_mean([1, 2, 3, 4])) == [1.0, 1.5, 2.0, 2.5]\n\n\ndef\
+      \ test_running_mean_is_lazy_generator():\n    gen = running_mean([1, 2])\n \
+      \   assert hasattr(gen, \"__next__\"), \"running_mean must return a lazy generator\"\
+      \n\n\ndef test_running_mean_accepts_infinite_input():\n    bounded = islice(count(),\
+      \ 5)\n    first3 = list(islice(running_mean(bounded), 3))\n    assert first3\
+      \ == [0.0, 0.5, 1.0]\n\n\ndef test_running_mean_empty():\n    assert list(running_mean([]))\
+      \ == []\n\n\ndef test_chunked_basic():\n    chunks = list(chunked(range(10),\
+      \ 4))\n    assert chunks == [[0, 1, 2, 3], [4, 5, 6, 7], [8, 9]]\n\n\ndef test_chunked_exact_multiple():\n\
+      \    assert list(chunked([1, 2], 2)) == [[1, 2]]\n\n\ndef test_chunked_bad_size():\n\
+      \    with pytest.raises(ValueError):\n        list(chunked([1], 0))\n"

@@ -1,0 +1,78 @@
+id: json-schema-validator
+suite: coding
+title: Fix JSON schema subset validator
+category: validation
+difficulty: 5
+target_file: schemacheck.py
+max_turns: 1
+timeout_s: 300
+prompt: 'You are given a small Python project with a bug or missing behavior.
+
+
+  Problem: The mini validator mishandles nested objects, required lists, enum, and
+  additionalProperties=false. Fix all documented cases.
+
+
+  Files currently in the workspace:
+
+  - schemacheck.py
+
+
+
+  '
+files:
+  schemacheck.py: "\"\"\"Validator for a small JSON-schema subset:\n\n- type: object\
+    \ | array | string | integer | number | boolean | null\n- properties / required\
+    \ / additionalProperties (object)\n- items (array), enum (any type)\n\nKnown issues\
+    \ reported by users: several constraints appear to be ignored.\n\"\"\"\n\n\ndef\
+    \ validate(value, schema, path=\"$\"):\n    \"\"\"Return a list of human-readable\
+    \ error strings (empty when valid).\"\"\"\n    errors: list[str] = []\n    expected_type\
+    \ = schema.get(\"type\")\n\n    if expected_type == \"null\":\n        if value\
+    \ is not None:\n            errors.append(f\"{path}: expected null\")\n      \
+    \  return errors\n    if expected_type == \"boolean\":\n        if not isinstance(value,\
+    \ bool):\n            errors.append(f\"{path}: expected boolean\")\n        return\
+    \ errors\n    if expected_type == \"string\":\n        if not isinstance(value,\
+    \ str):\n            errors.append(f\"{path}: expected string\")\n        return\
+    \ errors\n    if expected_type == \"integer\":\n        if not isinstance(value,\
+    \ int):\n            errors.append(f\"{path}: expected integer\")\n        return\
+    \ errors\n    if expected_type == \"number\":\n        if not isinstance(value,\
+    \ int | float):\n            errors.append(f\"{path}: expected number\")\n   \
+    \     return errors\n    if expected_type == \"array\":\n        if not isinstance(value,\
+    \ list):\n            errors.append(f\"{path}: expected array\")\n           \
+    \ return errors\n        item_schema = schema.get(\"items\")\n        if item_schema:\n\
+    \            for i, item in enumerate(value):\n                errors.extend(validate(item,\
+    \ item_schema, f\"{path}[{i}]\"))\n        return errors\n    if expected_type\
+    \ == \"object\":\n        if not isinstance(value, dict):\n            errors.append(f\"\
+    {path}: expected object\")\n            return errors\n        props = schema.get(\"\
+    properties\", {})\n        for key, sub in props.items():\n            if key\
+    \ in value:\n                errors.extend(validate(value[key], sub, f\"{path}.{key}\"\
+    ))\n        return errors\n\n    enum = schema.get(\"enum\")\n    if enum is not\
+    \ None and value not in enum:\n        errors.append(f\"{path}: {value!r} is not\
+    \ one of {enum!r}\")\n    return errors\n"
+grader:
+  type: unit_tests
+  tests:
+    test_schemacheck.py: "from schemacheck import validate\n\n\nPERSON = {\n    \"\
+      type\": \"object\",\n    \"required\": [\"name\", \"age\"],\n    \"additionalProperties\"\
+      : False,\n    \"properties\": {\n        \"name\": {\"type\": \"string\"},\n\
+      \        \"age\": {\"type\": \"integer\"},\n        \"role\": {\"enum\": [\"\
+      user\", \"admin\"]},\n    },\n}\n\n\ndef test_valid_person():\n    errs = validate({\"\
+      name\": \"ada\", \"age\": 36, \"role\": \"admin\"}, PERSON)\n    assert errs\
+      \ == []\n\n\ndef test_missing_required():\n    errs = validate({\"name\": \"\
+      ada\"}, PERSON)\n    assert any(\"missing required property 'age'\" in e for\
+      \ e in errs)\n\n\ndef test_unexpected_property():\n    errs = validate({\"name\"\
+      : \"a\", \"age\": 1, \"nickname\": \"x\"}, PERSON)\n    assert any(\"unexpected\
+      \ property 'nickname'\" in e for e in errs)\n\n\ndef test_enum_rejection():\n\
+      \    errs = validate({\"name\": \"a\", \"age\": 1, \"role\": \"root\"}, PERSON)\n\
+      \    assert any(\"not one of\" in e for e in errs)\n\n\ndef test_bool_is_not_integer():\n\
+      \    errs = validate({\"name\": \"a\", \"age\": True}, PERSON)\n    assert any(\"\
+      expected integer\" in e for e in errs)\n\n\ndef test_nested_array_items():\n\
+      \    schema = {\"type\": \"object\", \"properties\": {\"tags\": {\"type\": \"\
+      array\", \"items\": {\"type\": \"string\"}}}}\n    errs = validate({\"tags\"\
+      : [\"ok\", 5]}, schema)\n    assert any(\"expected string\" in e for e in errs)\n\
+      \n\ndef test_paths_are_reported():\n    errs = validate({\"tags\": [\"ok\",\
+      \ 5]}, {\"type\": \"object\", \"properties\": {\"tags\": {\"type\": \"array\"\
+      , \"items\": {\"type\": \"string\"}}}})\n    assert \"$.tags[1]\" in errs[0]\n\
+      \n\ndef test_null_and_number():\n    assert validate(None, {\"type\": \"null\"\
+      }) == []\n    assert validate(3.5, {\"type\": \"number\"}) == []\n    assert\
+      \ validate(3, {\"type\": \"number\"}) == []\n"

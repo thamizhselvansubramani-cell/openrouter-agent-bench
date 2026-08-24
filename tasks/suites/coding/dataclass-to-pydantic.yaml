@@ -1,0 +1,54 @@
+id: dataclass-to-pydantic
+suite: coding
+title: Complete dataclass-to-pydantic v2 migration
+category: migration
+difficulty: 4
+target_file: models_user.py
+max_turns: 1
+timeout_s: 300
+prompt: 'You are given a small Python project with a bug or missing behavior.
+
+
+  Problem: Migrate User/AdminUser to pydantic v2 models preserving the documented
+  behavior contract (email validation, display_name default, independent scopes defaults,
+  from_row).
+
+
+  Files currently in the workspace:
+
+  - models_user.py
+
+
+
+  '
+files:
+  models_user.py: "\"\"\"User domain models. Behavior contract:\n\n- ``User.email``\
+    \ must contain \"@\" or construction fails with ValidationError.\n- ``User.display_name``\
+    \ defaults to the local part of the email.\n- ``AdminUser`` inherits User fields\
+    \ plus ``scopes`` (default empty set).\n- ``from_row`` builds a User from a DB\
+    \ tuple ``(id, email)``.\n\"\"\"\n\nfrom dataclasses import dataclass, field\n\
+    \n\n@dataclass\nclass User:\n    id: int\n    email: str\n    display_name: str\
+    \ = \"\"\n\n    def __post_init__(self) -> None:\n        if \"@\" not in self.email:\n\
+    \            raise ValueError(\"invalid email\")\n        if not self.display_name:\n\
+    \            self.display_name = self.email.split(\"@\")[0]\n\n    @classmethod\n\
+    \    def from_row(cls, row: tuple) -> \"User\":\n        uid, email = row\n  \
+    \      return cls(id=uid, email=email)\n\n\n@dataclass\nclass AdminUser(User):\n\
+    \    scopes: set[str] = field(default_factory=set)\n\n\ndef validate_email(email:\
+    \ str) -> bool:\n    return \"@\" in email\n"
+grader:
+  type: unit_tests
+  tests:
+    test_models_user.py: "import pydantic\nimport pytest\n\nfrom models_user import\
+      \ AdminUser, User, validate_email\n\n\n@pytest.mark.parametrize(\"bad\", [\"\
+      nope\", \"\"])\ndef test_email_validation(bad):\n    with pytest.raises(pydantic.ValidationError):\n\
+      \        User(id=1, email=bad)\n\n\ndef test_display_name_default():\n    u\
+      \ = User(id=1, email=\"ada@example.com\")\n    assert u.display_name == \"ada\"\
+      \n\n\ndef test_display_name_explicit():\n    u = User(id=1, email=\"ada@example.com\"\
+      , display_name=\"Ada L.\")\n    assert u.display_name == \"Ada L.\"\n\n\ndef\
+      \ test_admin_scopes_default_independent():\n    a = AdminUser(id=2, email=\"\
+      root@example.com\")\n    b = AdminUser(id=3, email=\"alt@example.com\")\n  \
+      \  assert a.scopes == set()\n    a.scopes.add(\"write\")\n    assert b.scopes\
+      \ == set()\n\n\ndef test_from_row():\n    u = User.from_row((9, \"g@example.com\"\
+      ))\n    assert (u.id, u.email) == (9, \"g@example.com\")\n\n\ndef test_validate_email():\n\
+      \    assert validate_email(\"x@y\") is True\n    assert validate_email(\"xy\"\
+      ) is False\n\n\ndef test_is_pydantic_model():\n    assert issubclass(User, pydantic.BaseModel)\n"

@@ -1,0 +1,611 @@
+id: needle-policy-doc
+suite: long_context
+title: Extract policy identifiers from a long document
+category: retrieval
+difficulty: 4
+prompt: 'The following is a long, mostly-routine policy log. Extract three exact identifiers and report
+  them, each on its own line:
+
+  1. The key alias required for RESTRICTED data.
+
+  2. The archive bucket name for backups older than 30 days.
+
+  3. The name of the break-glass admin role.
+
+
+  === BEGIN DOCUMENT ===
+
+  OPERATIONS LOG EXPORT — retention tier: cold. Lines are append-only and ordered by sequence. Most entries
+  are routine; a few carry configuration facts that an on-call engineer may be asked to recover.
+
+  [2026-05-15T09:55:41Z] seq=0000 svc=search-indexer region=eu-central-1 evicted stale sessions in 263ms
+
+  [2026-05-04T17:30:19Z] seq=0001 svc=billing-worker region=us-east-1 rotated the signing key in 603ms
+
+  [2026-05-21T11:17:28Z] seq=0002 svc=feature-flags region=eu-central-1 retried the upstream call in 757ms
+
+  [2026-05-05T19:31:36Z] seq=0003 svc=search-indexer region=us-west-2 emitted a heartbeat in 417ms
+
+  [2026-05-16T01:57:29Z] seq=0004 svc=search-indexer region=us-east-1 reconciled pending records in 215ms
+
+  [2026-05-16T21:34:36Z] seq=0005 svc=notification-fanout region=us-west-2 evicted stale sessions in 154ms
+
+  [2026-05-06T07:53:09Z] seq=0006 svc=audit-logger region=us-east-1 evicted stale sessions in 224ms
+
+  [2026-05-08T17:31:24Z] seq=0007 svc=ledger-reconciler region=ap-southeast-1 emitted a heartbeat in 260ms
+
+  [2026-05-15T15:14:40Z] seq=0008 svc=image-resizer region=sa-east-1 retried the upstream call in 707ms
+
+  [2026-05-12T18:49:43Z] seq=0009 svc=search-indexer region=us-east-1 reconciled pending records in 770ms
+
+  [2026-05-17T08:29:56Z] seq=0010 svc=ledger-reconciler region=eu-central-1 emitted a heartbeat in 407ms
+
+  [2026-05-09T13:57:43Z] seq=0011 svc=auth-gateway region=sa-east-1 evicted stale sessions in 228ms
+
+  [2026-05-25T16:21:45Z] seq=0012 svc=rate-limiter region=ap-southeast-1 compacted the WAL segment in
+  286ms
+
+  [2026-05-27T02:11:37Z] seq=0013 svc=auth-gateway region=us-east-1 emitted a heartbeat in 177ms
+
+  [2026-05-27T17:43:59Z] seq=0014 svc=search-indexer region=us-west-2 emitted a heartbeat in 809ms
+
+  [2026-05-27T09:23:26Z] seq=0015 svc=rate-limiter region=us-east-1 compacted the WAL segment in 35ms
+
+  [2026-05-23T06:28:08Z] seq=0016 svc=billing-worker region=eu-central-1 reconciled pending records in
+  398ms
+
+  [2026-05-28T23:36:14Z] seq=0017 svc=search-indexer region=sa-east-1 rebalanced shard ownership in 891ms
+
+  [2026-05-17T09:58:57Z] seq=0018 svc=search-indexer region=us-east-1 reconciled pending records in 673ms
+
+  [2026-05-23T01:35:10Z] seq=0019 svc=search-indexer region=ap-southeast-1 flushed the write buffer in
+  480ms
+
+  [2026-05-09T23:42:05Z] seq=0020 svc=cache-warmer region=ap-southeast-1 retried the upstream call in
+  299ms
+
+  [2026-05-21T02:44:50Z] seq=0021 svc=audit-logger region=eu-central-1 compacted the WAL segment in 103ms
+
+  [2026-05-03T12:41:57Z] seq=0022 svc=notification-fanout region=eu-central-1 evicted stale sessions in
+  508ms
+
+  [2026-05-08T20:12:20Z] seq=0023 svc=auth-gateway region=us-west-2 compacted the WAL segment in 325ms
+
+  [2026-05-06T12:10:03Z] seq=0024 svc=session-store region=sa-east-1 compacted the WAL segment in 18ms
+
+  [2026-05-07T21:59:11Z] seq=0025 svc=webhook-dispatch region=sa-east-1 reconciled pending records in
+  596ms
+
+  [2026-05-23T01:22:04Z] seq=0026 svc=cache-warmer region=eu-central-1 reconciled pending records in 466ms
+
+  [2026-05-17T15:19:35Z] seq=0027 svc=cache-warmer region=us-east-1 compacted the WAL segment in 876ms
+
+  [2026-05-23T06:29:04Z] seq=0028 svc=image-resizer region=ap-southeast-1 checkpointed offsets in 628ms
+
+  [2026-05-13T01:45:16Z] seq=0029 svc=audit-logger region=eu-central-1 evicted stale sessions in 575ms
+
+  [2026-05-26T00:57:52Z] seq=0030 svc=auth-gateway region=eu-central-1 evicted stale sessions in 629ms
+
+  [2026-05-07T13:50:27Z] seq=0031 svc=feature-flags region=us-west-2 rebalanced shard ownership in 258ms
+
+  [2026-05-16T21:35:48Z] seq=0032 svc=webhook-dispatch region=us-east-1 reconciled pending records in
+  832ms
+
+  [2026-05-28T00:43:41Z] seq=0033 svc=billing-worker region=sa-east-1 reconciled pending records in 879ms
+
+  [2026-05-05T01:07:58Z] seq=0034 svc=image-resizer region=sa-east-1 emitted a heartbeat in 100ms
+
+  [2026-05-14T10:29:18Z] seq=0035 svc=session-store region=ap-southeast-1 checkpointed offsets in 418ms
+
+  [2026-05-03T08:43:03Z] seq=0036 svc=feature-flags region=us-west-2 emitted a heartbeat in 582ms
+
+  [2026-05-03T12:28:05Z] seq=0037 svc=cache-warmer region=us-east-1 checkpointed offsets in 95ms
+
+  [2026-05-11T04:10:42Z] seq=0038 svc=auth-gateway region=us-east-1 reconciled pending records in 31ms
+
+  [2026-05-01T02:09:51Z] seq=0039 svc=session-store region=sa-east-1 rotated the signing key in 132ms
+
+  [2026-05-12T21:01:17Z] seq=0040 svc=feature-flags region=ap-southeast-1 compacted the WAL segment in
+  324ms
+
+  [2026-05-08T00:47:33Z] seq=0041 svc=ledger-reconciler region=ap-southeast-1 evicted stale sessions in
+  549ms
+
+  [2026-05-10T14:53:31Z] seq=0042 svc=auth-gateway region=us-west-2 rebalanced shard ownership in 497ms
+
+  [2026-05-22T15:58:34Z] seq=0043 svc=auth-gateway region=us-west-2 rotated the signing key in 560ms
+
+  [2026-05-04T13:29:37Z] seq=0044 svc=cache-warmer region=us-west-2 emitted a heartbeat in 630ms
+
+  [2026-05-08T12:21:04Z] seq=0045 svc=rate-limiter region=ap-southeast-1 emitted a heartbeat in 769ms
+
+  [2026-05-23T05:54:06Z] seq=0046 svc=search-indexer region=us-east-1 rotated the signing key in 296ms
+
+  [2026-05-11T18:39:29Z] seq=0047 svc=audit-logger region=eu-central-1 rotated the signing key in 512ms
+
+  [2026-05-17T10:32:26Z] seq=0048 svc=ledger-reconciler region=eu-central-1 reconciled pending records
+  in 537ms
+
+  [2026-05-22T20:13:34Z] seq=0049 svc=session-store region=ap-southeast-1 compacted the WAL segment in
+  32ms
+
+  [2026-05-26T18:37:32Z] seq=0050 svc=cache-warmer region=us-east-1 rebalanced shard ownership in 855ms
+
+  [policy] Data classified as RESTRICTED must be encrypted with key alias k-emerald.
+
+  [2026-05-09T08:43:56Z] seq=0052 svc=billing-worker region=us-west-2 reconciled pending records in 568ms
+
+  [2026-05-05T07:16:05Z] seq=0053 svc=session-store region=us-west-2 flushed the write buffer in 542ms
+
+  [2026-05-02T17:25:51Z] seq=0054 svc=image-resizer region=eu-central-1 evicted stale sessions in 336ms
+
+  [2026-05-13T04:53:54Z] seq=0055 svc=ledger-reconciler region=ap-southeast-1 flushed the write buffer
+  in 454ms
+
+  [2026-05-22T01:48:49Z] seq=0056 svc=cache-warmer region=us-west-2 reconciled pending records in 273ms
+
+  [2026-05-17T22:56:49Z] seq=0057 svc=webhook-dispatch region=sa-east-1 rotated the signing key in 76ms
+
+  [2026-05-08T15:20:08Z] seq=0058 svc=feature-flags region=us-west-2 rebalanced shard ownership in 151ms
+
+  [2026-05-09T18:30:25Z] seq=0059 svc=ledger-reconciler region=us-east-1 rebalanced shard ownership in
+  657ms
+
+  [2026-05-20T13:05:43Z] seq=0060 svc=feature-flags region=us-west-2 compacted the WAL segment in 328ms
+
+  [2026-05-26T17:09:14Z] seq=0061 svc=session-store region=ap-southeast-1 retried the upstream call in
+  684ms
+
+  [2026-05-24T12:32:23Z] seq=0062 svc=notification-fanout region=us-east-1 flushed the write buffer in
+  255ms
+
+  [2026-05-27T01:23:08Z] seq=0063 svc=feature-flags region=eu-central-1 emitted a heartbeat in 97ms
+
+  [2026-05-18T02:56:38Z] seq=0064 svc=search-indexer region=us-east-1 checkpointed offsets in 763ms
+
+  [2026-05-11T09:57:58Z] seq=0065 svc=feature-flags region=sa-east-1 rotated the signing key in 565ms
+
+  [2026-05-19T16:57:33Z] seq=0066 svc=billing-worker region=us-east-1 rotated the signing key in 513ms
+
+  [2026-05-21T18:17:39Z] seq=0067 svc=ledger-reconciler region=ap-southeast-1 emitted a heartbeat in 560ms
+
+  [2026-05-24T06:02:35Z] seq=0068 svc=audit-logger region=sa-east-1 evicted stale sessions in 677ms
+
+  [2026-05-28T04:38:30Z] seq=0069 svc=auth-gateway region=eu-central-1 retried the upstream call in 484ms
+
+  [2026-05-16T01:12:07Z] seq=0070 svc=search-indexer region=ap-southeast-1 emitted a heartbeat in 269ms
+
+  [2026-05-20T12:25:56Z] seq=0071 svc=session-store region=sa-east-1 emitted a heartbeat in 305ms
+
+  [2026-05-16T15:42:33Z] seq=0072 svc=cache-warmer region=us-west-2 flushed the write buffer in 223ms
+
+  [2026-05-07T00:09:03Z] seq=0073 svc=ledger-reconciler region=us-west-2 flushed the write buffer in 782ms
+
+  [2026-05-05T08:15:58Z] seq=0074 svc=audit-logger region=us-west-2 checkpointed offsets in 687ms
+
+  [2026-05-13T16:08:10Z] seq=0075 svc=notification-fanout region=eu-central-1 emitted a heartbeat in 509ms
+
+  [2026-05-24T17:00:38Z] seq=0076 svc=cache-warmer region=eu-central-1 reconciled pending records in 38ms
+
+  [2026-05-10T23:26:06Z] seq=0077 svc=rate-limiter region=us-west-2 rebalanced shard ownership in 257ms
+
+  [2026-05-09T02:40:28Z] seq=0078 svc=webhook-dispatch region=us-east-1 retried the upstream call in 740ms
+
+  [2026-05-21T14:08:16Z] seq=0079 svc=image-resizer region=ap-southeast-1 evicted stale sessions in 99ms
+
+  [2026-05-16T20:07:15Z] seq=0080 svc=cache-warmer region=eu-central-1 reconciled pending records in 889ms
+
+  [2026-05-18T06:13:53Z] seq=0081 svc=rate-limiter region=ap-southeast-1 rebalanced shard ownership in
+  153ms
+
+  [2026-05-27T23:13:20Z] seq=0082 svc=feature-flags region=ap-southeast-1 rebalanced shard ownership in
+  94ms
+
+  [2026-05-03T02:51:47Z] seq=0083 svc=audit-logger region=us-east-1 flushed the write buffer in 821ms
+
+  [2026-05-04T03:57:08Z] seq=0084 svc=notification-fanout region=us-east-1 evicted stale sessions in 899ms
+
+  [2026-05-26T08:07:00Z] seq=0085 svc=feature-flags region=ap-southeast-1 compacted the WAL segment in
+  846ms
+
+  [2026-05-05T22:17:01Z] seq=0086 svc=auth-gateway region=us-west-2 emitted a heartbeat in 869ms
+
+  [2026-05-11T23:51:21Z] seq=0087 svc=webhook-dispatch region=eu-central-1 emitted a heartbeat in 535ms
+
+  [2026-05-15T08:26:03Z] seq=0088 svc=feature-flags region=ap-southeast-1 evicted stale sessions in 132ms
+
+  [2026-05-16T00:20:58Z] seq=0089 svc=search-indexer region=sa-east-1 flushed the write buffer in 163ms
+
+  [2026-05-15T19:43:12Z] seq=0090 svc=ledger-reconciler region=ap-southeast-1 retried the upstream call
+  in 111ms
+
+  [2026-05-14T16:22:36Z] seq=0091 svc=webhook-dispatch region=us-west-2 rotated the signing key in 242ms
+
+  [2026-05-03T20:27:22Z] seq=0092 svc=search-indexer region=us-east-1 evicted stale sessions in 647ms
+
+  [2026-05-17T00:52:25Z] seq=0093 svc=cache-warmer region=us-west-2 flushed the write buffer in 816ms
+
+  [2026-05-13T13:38:29Z] seq=0094 svc=image-resizer region=ap-southeast-1 rebalanced shard ownership in
+  7ms
+
+  [2026-05-08T03:26:14Z] seq=0095 svc=image-resizer region=us-east-1 rebalanced shard ownership in 698ms
+
+  [2026-05-26T14:23:07Z] seq=0096 svc=audit-logger region=us-west-2 checkpointed offsets in 130ms
+
+  [2026-05-02T12:27:26Z] seq=0097 svc=billing-worker region=us-west-2 rotated the signing key in 726ms
+
+  [2026-05-07T14:16:29Z] seq=0098 svc=notification-fanout region=us-west-2 retried the upstream call in
+  270ms
+
+  [2026-05-01T17:21:00Z] seq=0099 svc=image-resizer region=eu-central-1 flushed the write buffer in 862ms
+
+  [2026-05-05T11:18:48Z] seq=0100 svc=search-indexer region=us-east-1 evicted stale sessions in 123ms
+
+  [2026-05-17T02:17:02Z] seq=0101 svc=notification-fanout region=us-east-1 retried the upstream call in
+  190ms
+
+  [2026-05-03T12:37:46Z] seq=0102 svc=search-indexer region=sa-east-1 checkpointed offsets in 154ms
+
+  [2026-05-22T03:25:50Z] seq=0103 svc=search-indexer region=sa-east-1 reconciled pending records in 157ms
+
+  [2026-05-21T13:48:52Z] seq=0104 svc=notification-fanout region=us-east-1 retried the upstream call in
+  254ms
+
+  [2026-05-11T22:50:36Z] seq=0105 svc=webhook-dispatch region=ap-southeast-1 rotated the signing key in
+  92ms
+
+  [2026-05-22T03:22:44Z] seq=0106 svc=auth-gateway region=eu-central-1 compacted the WAL segment in 391ms
+
+  [2026-05-12T18:47:46Z] seq=0107 svc=notification-fanout region=sa-east-1 checkpointed offsets in 737ms
+
+  [2026-05-10T09:26:07Z] seq=0108 svc=search-indexer region=ap-southeast-1 flushed the write buffer in
+  20ms
+
+  [2026-05-26T03:22:32Z] seq=0109 svc=auth-gateway region=ap-southeast-1 reconciled pending records in
+  201ms
+
+  [2026-05-23T18:53:23Z] seq=0110 svc=audit-logger region=ap-southeast-1 compacted the WAL segment in
+  17ms
+
+  [2026-05-01T05:31:42Z] seq=0111 svc=rate-limiter region=us-east-1 compacted the WAL segment in 484ms
+
+  [2026-05-16T01:28:34Z] seq=0112 svc=cache-warmer region=us-west-2 rotated the signing key in 190ms
+
+  [2026-05-07T01:51:47Z] seq=0113 svc=billing-worker region=ap-southeast-1 evicted stale sessions in 326ms
+
+  [2026-05-10T09:46:24Z] seq=0114 svc=search-indexer region=eu-central-1 checkpointed offsets in 896ms
+
+  [2026-05-12T11:44:41Z] seq=0115 svc=cache-warmer region=sa-east-1 compacted the WAL segment in 461ms
+
+  [2026-05-18T08:55:36Z] seq=0116 svc=webhook-dispatch region=us-west-2 reconciled pending records in
+  150ms
+
+  [2026-05-18T19:45:55Z] seq=0117 svc=auth-gateway region=sa-east-1 compacted the WAL segment in 114ms
+
+  [2026-05-23T00:27:47Z] seq=0118 svc=billing-worker region=sa-east-1 rotated the signing key in 254ms
+
+  [2026-05-07T05:40:26Z] seq=0119 svc=feature-flags region=us-east-1 evicted stale sessions in 844ms
+
+  [2026-05-03T05:52:25Z] seq=0120 svc=auth-gateway region=us-east-1 checkpointed offsets in 182ms
+
+  [2026-05-07T18:43:35Z] seq=0121 svc=ledger-reconciler region=sa-east-1 evicted stale sessions in 106ms
+
+  [2026-05-15T09:07:57Z] seq=0122 svc=audit-logger region=eu-central-1 emitted a heartbeat in 571ms
+
+  [2026-05-22T01:44:19Z] seq=0123 svc=rate-limiter region=eu-central-1 retried the upstream call in 446ms
+
+  [2026-05-28T15:29:37Z] seq=0124 svc=billing-worker region=eu-central-1 reconciled pending records in
+  153ms
+
+  [2026-05-14T11:10:51Z] seq=0125 svc=webhook-dispatch region=us-west-2 reconciled pending records in
+  543ms
+
+  [2026-05-13T17:03:38Z] seq=0126 svc=session-store region=sa-east-1 compacted the WAL segment in 331ms
+
+  [2026-05-21T04:08:48Z] seq=0127 svc=billing-worker region=ap-southeast-1 flushed the write buffer in
+  68ms
+
+  [2026-05-19T19:00:46Z] seq=0128 svc=billing-worker region=us-west-2 flushed the write buffer in 595ms
+
+  [2026-05-02T07:20:30Z] seq=0129 svc=webhook-dispatch region=ap-southeast-1 retried the upstream call
+  in 818ms
+
+  [2026-05-20T14:20:29Z] seq=0130 svc=image-resizer region=us-east-1 evicted stale sessions in 743ms
+
+  [2026-05-23T20:02:43Z] seq=0131 svc=cache-warmer region=sa-east-1 compacted the WAL segment in 616ms
+
+  [2026-05-01T04:02:43Z] seq=0132 svc=image-resizer region=ap-southeast-1 checkpointed offsets in 379ms
+
+  [2026-05-23T04:53:23Z] seq=0133 svc=webhook-dispatch region=us-east-1 rebalanced shard ownership in
+  445ms
+
+  [2026-05-19T08:05:01Z] seq=0134 svc=notification-fanout region=sa-east-1 checkpointed offsets in 11ms
+
+  [2026-05-11T20:57:02Z] seq=0135 svc=ledger-reconciler region=eu-central-1 evicted stale sessions in
+  839ms
+
+  [2026-05-21T11:07:39Z] seq=0136 svc=session-store region=eu-central-1 checkpointed offsets in 856ms
+
+  [2026-05-25T12:43:56Z] seq=0137 svc=notification-fanout region=us-east-1 compacted the WAL segment in
+  812ms
+
+  [2026-05-17T07:06:22Z] seq=0138 svc=rate-limiter region=eu-central-1 compacted the WAL segment in 144ms
+
+  [2026-05-05T12:07:39Z] seq=0139 svc=cache-warmer region=eu-central-1 rebalanced shard ownership in 344ms
+
+  [policy] Backups older than 30 days move to archive bucket vault-nimbus-7.
+
+  [2026-05-11T14:23:52Z] seq=0141 svc=webhook-dispatch region=sa-east-1 rotated the signing key in 883ms
+
+  [2026-05-10T01:37:45Z] seq=0142 svc=search-indexer region=us-east-1 rotated the signing key in 459ms
+
+  [2026-05-23T22:05:14Z] seq=0143 svc=auth-gateway region=us-west-2 emitted a heartbeat in 229ms
+
+  [2026-05-20T18:45:30Z] seq=0144 svc=auth-gateway region=us-east-1 flushed the write buffer in 434ms
+
+  [2026-05-04T16:41:11Z] seq=0145 svc=session-store region=us-east-1 reconciled pending records in 614ms
+
+  [2026-05-08T14:45:07Z] seq=0146 svc=ledger-reconciler region=us-east-1 rotated the signing key in 405ms
+
+  [2026-05-20T21:33:44Z] seq=0147 svc=auth-gateway region=eu-central-1 reconciled pending records in 861ms
+
+  [2026-05-28T06:35:52Z] seq=0148 svc=feature-flags region=us-west-2 evicted stale sessions in 44ms
+
+  [2026-05-08T11:06:22Z] seq=0149 svc=image-resizer region=us-west-2 evicted stale sessions in 490ms
+
+  [2026-05-21T08:32:31Z] seq=0150 svc=notification-fanout region=us-west-2 compacted the WAL segment in
+  792ms
+
+  [2026-05-07T18:22:27Z] seq=0151 svc=session-store region=us-east-1 evicted stale sessions in 807ms
+
+  [2026-05-05T06:15:14Z] seq=0152 svc=feature-flags region=eu-central-1 compacted the WAL segment in 111ms
+
+  [2026-05-06T11:36:28Z] seq=0153 svc=audit-logger region=sa-east-1 flushed the write buffer in 280ms
+
+  [2026-05-13T07:47:57Z] seq=0154 svc=billing-worker region=sa-east-1 compacted the WAL segment in 19ms
+
+  [2026-05-16T07:41:52Z] seq=0155 svc=ledger-reconciler region=us-east-1 compacted the WAL segment in
+  414ms
+
+  [2026-05-12T22:33:06Z] seq=0156 svc=webhook-dispatch region=us-west-2 checkpointed offsets in 125ms
+
+  [2026-05-07T18:27:49Z] seq=0157 svc=image-resizer region=sa-east-1 rotated the signing key in 174ms
+
+  [2026-05-12T21:28:44Z] seq=0158 svc=auth-gateway region=eu-central-1 rebalanced shard ownership in 175ms
+
+  [2026-05-07T16:07:56Z] seq=0159 svc=billing-worker region=eu-central-1 evicted stale sessions in 750ms
+
+  [2026-05-19T12:18:48Z] seq=0160 svc=rate-limiter region=ap-southeast-1 flushed the write buffer in 880ms
+
+  [2026-05-02T05:20:09Z] seq=0161 svc=rate-limiter region=us-west-2 rebalanced shard ownership in 220ms
+
+  [2026-05-10T18:32:20Z] seq=0162 svc=feature-flags region=us-east-1 reconciled pending records in 479ms
+
+  [2026-05-20T21:31:40Z] seq=0163 svc=audit-logger region=us-east-1 retried the upstream call in 85ms
+
+  [2026-05-22T13:45:09Z] seq=0164 svc=search-indexer region=ap-southeast-1 reconciled pending records
+  in 577ms
+
+  [2026-05-26T13:34:25Z] seq=0165 svc=billing-worker region=us-east-1 compacted the WAL segment in 351ms
+
+  [2026-05-18T07:22:45Z] seq=0166 svc=auth-gateway region=us-east-1 checkpointed offsets in 370ms
+
+  [2026-05-01T11:55:29Z] seq=0167 svc=rate-limiter region=us-east-1 compacted the WAL segment in 309ms
+
+  [2026-05-16T21:47:13Z] seq=0168 svc=audit-logger region=us-west-2 reconciled pending records in 649ms
+
+  [2026-05-12T12:44:10Z] seq=0169 svc=rate-limiter region=eu-central-1 checkpointed offsets in 796ms
+
+  [2026-05-04T10:42:50Z] seq=0170 svc=cache-warmer region=us-east-1 retried the upstream call in 650ms
+
+  [2026-05-13T13:11:17Z] seq=0171 svc=webhook-dispatch region=us-west-2 rebalanced shard ownership in
+  815ms
+
+  [2026-05-15T15:06:46Z] seq=0172 svc=feature-flags region=us-west-2 retried the upstream call in 449ms
+
+  [2026-05-23T06:19:56Z] seq=0173 svc=search-indexer region=eu-central-1 rebalanced shard ownership in
+  771ms
+
+  [2026-05-12T23:27:04Z] seq=0174 svc=search-indexer region=sa-east-1 emitted a heartbeat in 643ms
+
+  [2026-05-11T22:24:43Z] seq=0175 svc=auth-gateway region=us-west-2 flushed the write buffer in 461ms
+
+  [2026-05-25T03:02:14Z] seq=0176 svc=rate-limiter region=sa-east-1 compacted the WAL segment in 866ms
+
+  [2026-05-01T17:26:57Z] seq=0177 svc=cache-warmer region=us-east-1 flushed the write buffer in 311ms
+
+  [2026-05-17T21:43:35Z] seq=0178 svc=rate-limiter region=ap-southeast-1 evicted stale sessions in 648ms
+
+  [2026-05-18T01:24:49Z] seq=0179 svc=ledger-reconciler region=ap-southeast-1 emitted a heartbeat in 133ms
+
+  [2026-05-15T19:25:42Z] seq=0180 svc=notification-fanout region=us-west-2 checkpointed offsets in 112ms
+
+  [2026-05-09T18:44:12Z] seq=0181 svc=session-store region=us-west-2 emitted a heartbeat in 323ms
+
+  [2026-05-18T13:33:13Z] seq=0182 svc=notification-fanout region=us-east-1 flushed the write buffer in
+  557ms
+
+  [2026-05-22T07:54:27Z] seq=0183 svc=ledger-reconciler region=ap-southeast-1 retried the upstream call
+  in 801ms
+
+  [2026-05-05T14:45:56Z] seq=0184 svc=cache-warmer region=us-east-1 retried the upstream call in 502ms
+
+  [2026-05-14T03:45:13Z] seq=0185 svc=feature-flags region=sa-east-1 retried the upstream call in 169ms
+
+  [2026-05-03T14:29:19Z] seq=0186 svc=search-indexer region=us-west-2 rebalanced shard ownership in 861ms
+
+  [2026-05-28T01:33:58Z] seq=0187 svc=feature-flags region=eu-central-1 rebalanced shard ownership in
+  504ms
+
+  [2026-05-13T17:19:27Z] seq=0188 svc=webhook-dispatch region=us-west-2 rotated the signing key in 660ms
+
+  [2026-05-21T09:56:48Z] seq=0189 svc=billing-worker region=us-west-2 checkpointed offsets in 511ms
+
+  [2026-05-26T18:18:18Z] seq=0190 svc=session-store region=sa-east-1 rebalanced shard ownership in 237ms
+
+  [2026-05-27T02:38:43Z] seq=0191 svc=feature-flags region=us-east-1 rotated the signing key in 822ms
+
+  [2026-05-21T18:11:27Z] seq=0192 svc=auth-gateway region=ap-southeast-1 checkpointed offsets in 800ms
+
+  [2026-05-26T15:55:00Z] seq=0193 svc=rate-limiter region=eu-central-1 compacted the WAL segment in 353ms
+
+  [2026-05-18T10:39:57Z] seq=0194 svc=feature-flags region=us-west-2 compacted the WAL segment in 724ms
+
+  [2026-05-18T20:16:43Z] seq=0195 svc=cache-warmer region=us-east-1 rebalanced shard ownership in 338ms
+
+  [2026-05-27T12:07:19Z] seq=0196 svc=session-store region=ap-southeast-1 emitted a heartbeat in 508ms
+
+  [2026-05-08T15:23:26Z] seq=0197 svc=rate-limiter region=us-west-2 emitted a heartbeat in 3ms
+
+  [2026-05-04T06:47:39Z] seq=0198 svc=cache-warmer region=us-west-2 rebalanced shard ownership in 199ms
+
+  [2026-05-26T21:11:29Z] seq=0199 svc=image-resizer region=us-west-2 compacted the WAL segment in 127ms
+
+  [2026-05-07T17:12:32Z] seq=0200 svc=rate-limiter region=us-west-2 checkpointed offsets in 463ms
+
+  [2026-05-02T14:46:28Z] seq=0201 svc=webhook-dispatch region=us-west-2 flushed the write buffer in 399ms
+
+  [2026-05-16T02:48:59Z] seq=0202 svc=search-indexer region=us-east-1 evicted stale sessions in 248ms
+
+  [2026-05-26T10:09:08Z] seq=0203 svc=search-indexer region=eu-central-1 emitted a heartbeat in 551ms
+
+  [2026-05-03T14:38:36Z] seq=0204 svc=rate-limiter region=us-east-1 checkpointed offsets in 508ms
+
+  [2026-05-16T18:54:10Z] seq=0205 svc=audit-logger region=sa-east-1 flushed the write buffer in 603ms
+
+  [2026-05-11T04:43:17Z] seq=0206 svc=search-indexer region=sa-east-1 evicted stale sessions in 296ms
+
+  [2026-05-12T21:51:20Z] seq=0207 svc=rate-limiter region=eu-central-1 rebalanced shard ownership in 729ms
+
+  [2026-05-19T19:32:54Z] seq=0208 svc=image-resizer region=eu-central-1 compacted the WAL segment in 763ms
+
+  [2026-05-13T15:10:55Z] seq=0209 svc=ledger-reconciler region=ap-southeast-1 compacted the WAL segment
+  in 492ms
+
+  [2026-05-08T04:03:05Z] seq=0210 svc=auth-gateway region=us-east-1 rebalanced shard ownership in 792ms
+
+  [2026-05-25T06:30:52Z] seq=0211 svc=image-resizer region=us-east-1 compacted the WAL segment in 427ms
+
+  [2026-05-22T12:25:44Z] seq=0212 svc=billing-worker region=ap-southeast-1 checkpointed offsets in 272ms
+
+  [2026-05-03T19:18:12Z] seq=0213 svc=session-store region=ap-southeast-1 flushed the write buffer in
+  250ms
+
+  [2026-05-03T19:23:45Z] seq=0214 svc=webhook-dispatch region=ap-southeast-1 emitted a heartbeat in 130ms
+
+  [2026-05-22T04:08:18Z] seq=0215 svc=image-resizer region=us-west-2 flushed the write buffer in 704ms
+
+  [2026-05-03T20:21:46Z] seq=0216 svc=auth-gateway region=us-west-2 rotated the signing key in 858ms
+
+  [2026-05-12T00:50:13Z] seq=0217 svc=ledger-reconciler region=us-west-2 rebalanced shard ownership in
+  838ms
+
+  [2026-05-08T17:31:25Z] seq=0218 svc=billing-worker region=sa-east-1 flushed the write buffer in 659ms
+
+  [2026-05-05T04:28:15Z] seq=0219 svc=feature-flags region=us-east-1 rotated the signing key in 320ms
+
+  [2026-05-15T23:09:29Z] seq=0220 svc=webhook-dispatch region=sa-east-1 compacted the WAL segment in 434ms
+
+  [policy] The break-glass admin role is named oncall-breakglass-omega.
+
+  [2026-05-01T07:32:54Z] seq=0222 svc=session-store region=ap-southeast-1 compacted the WAL segment in
+  175ms
+
+  [2026-05-08T19:54:14Z] seq=0223 svc=webhook-dispatch region=ap-southeast-1 checkpointed offsets in 820ms
+
+  [2026-05-20T22:05:03Z] seq=0224 svc=image-resizer region=ap-southeast-1 evicted stale sessions in 448ms
+
+  [2026-05-25T21:50:47Z] seq=0225 svc=auth-gateway region=sa-east-1 retried the upstream call in 68ms
+
+  [2026-05-25T22:05:47Z] seq=0226 svc=notification-fanout region=ap-southeast-1 emitted a heartbeat in
+  776ms
+
+  [2026-05-09T21:26:40Z] seq=0227 svc=image-resizer region=us-east-1 rebalanced shard ownership in 763ms
+
+  [2026-05-02T13:00:24Z] seq=0228 svc=billing-worker region=sa-east-1 flushed the write buffer in 720ms
+
+  [2026-05-13T16:57:16Z] seq=0229 svc=image-resizer region=sa-east-1 emitted a heartbeat in 345ms
+
+  [2026-05-21T03:26:17Z] seq=0230 svc=session-store region=eu-central-1 checkpointed offsets in 635ms
+
+  [2026-05-03T06:07:08Z] seq=0231 svc=notification-fanout region=ap-southeast-1 emitted a heartbeat in
+  780ms
+
+  [2026-05-12T23:45:17Z] seq=0232 svc=rate-limiter region=us-east-1 reconciled pending records in 475ms
+
+  [2026-05-05T02:52:09Z] seq=0233 svc=audit-logger region=sa-east-1 rotated the signing key in 810ms
+
+  [2026-05-05T11:01:27Z] seq=0234 svc=auth-gateway region=us-west-2 compacted the WAL segment in 336ms
+
+  [2026-05-28T22:57:59Z] seq=0235 svc=notification-fanout region=us-west-2 rebalanced shard ownership
+  in 58ms
+
+  [2026-05-10T06:22:11Z] seq=0236 svc=image-resizer region=sa-east-1 checkpointed offsets in 458ms
+
+  [2026-05-05T09:59:35Z] seq=0237 svc=session-store region=ap-southeast-1 reconciled pending records in
+  371ms
+
+  [2026-05-20T01:43:50Z] seq=0238 svc=audit-logger region=us-east-1 flushed the write buffer in 445ms
+
+  [2026-05-27T18:40:30Z] seq=0239 svc=image-resizer region=sa-east-1 retried the upstream call in 96ms
+
+  [2026-05-03T13:47:21Z] seq=0240 svc=session-store region=ap-southeast-1 evicted stale sessions in 551ms
+
+  [2026-05-17T05:14:25Z] seq=0241 svc=image-resizer region=sa-east-1 evicted stale sessions in 480ms
+
+  [2026-05-16T10:36:09Z] seq=0242 svc=auth-gateway region=eu-central-1 rebalanced shard ownership in 502ms
+
+  [2026-05-05T18:13:39Z] seq=0243 svc=ledger-reconciler region=ap-southeast-1 evicted stale sessions in
+  149ms
+
+  [2026-05-09T09:59:29Z] seq=0244 svc=billing-worker region=us-west-2 retried the upstream call in 87ms
+
+  [2026-05-24T20:19:53Z] seq=0245 svc=webhook-dispatch region=us-west-2 evicted stale sessions in 139ms
+
+  [2026-05-21T12:27:19Z] seq=0246 svc=audit-logger region=ap-southeast-1 retried the upstream call in
+  182ms
+
+  [2026-05-21T15:56:28Z] seq=0247 svc=feature-flags region=sa-east-1 reconciled pending records in 372ms
+
+  [2026-05-06T11:22:09Z] seq=0248 svc=feature-flags region=ap-southeast-1 emitted a heartbeat in 685ms
+
+  [2026-05-22T16:11:20Z] seq=0249 svc=image-resizer region=ap-southeast-1 emitted a heartbeat in 818ms
+
+  [2026-05-23T07:35:02Z] seq=0250 svc=feature-flags region=eu-central-1 rebalanced shard ownership in
+  397ms
+
+  [2026-05-18T20:19:32Z] seq=0251 svc=notification-fanout region=eu-central-1 compacted the WAL segment
+  in 732ms
+
+  [2026-05-22T21:15:03Z] seq=0252 svc=webhook-dispatch region=us-east-1 retried the upstream call in 730ms
+
+  [2026-05-14T07:46:58Z] seq=0253 svc=ledger-reconciler region=us-east-1 rebalanced shard ownership in
+  176ms
+
+  [2026-05-01T10:50:13Z] seq=0254 svc=rate-limiter region=us-east-1 retried the upstream call in 248ms
+
+  [2026-05-20T20:33:29Z] seq=0255 svc=audit-logger region=eu-central-1 compacted the WAL segment in 83ms
+
+  [2026-05-05T00:52:57Z] seq=0256 svc=audit-logger region=eu-central-1 evicted stale sessions in 727ms
+
+  [2026-05-09T00:46:35Z] seq=0257 svc=billing-worker region=us-east-1 checkpointed offsets in 303ms
+
+  [2026-05-01T08:31:56Z] seq=0258 svc=webhook-dispatch region=us-east-1 compacted the WAL segment in 653ms
+
+  [2026-05-18T23:47:07Z] seq=0259 svc=notification-fanout region=sa-east-1 rebalanced shard ownership
+  in 827ms
+
+  === END DOCUMENT ===
+
+  '
+files: {}
+grader:
+  type: keyed_facts
+  facts:
+    key_alias: k-emerald
+    archive_bucket: vault-nimbus-7
+    breakglass_role: oncall-breakglass-omega
+max_turns: 1
+timeout_s: 180.0
+generator: policy_doc
+context_tokens: 6700

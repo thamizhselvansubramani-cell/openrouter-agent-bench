@@ -1,0 +1,50 @@
+id: timezone-aware-datetime
+suite: coding
+title: Fix naive/aware datetime comparison bug
+category: datetime
+difficulty: 4
+target_file: shifts.py
+max_turns: 1
+timeout_s: 300
+prompt: 'You are given a small Python project with a bug or missing behavior.
+
+
+  Problem: is_within_shift crashes comparing naive and aware datetimes when the shift
+  boundaries carry an offset but `at` is naive, or vice versa; all inputs must be
+  normalized to UTC before comparison.
+
+
+  Files currently in the workspace:
+
+  - shifts.py
+
+
+
+  '
+files:
+  shifts.py: "\"\"\"Shift-window membership checks.\"\"\"\n\nfrom datetime import\
+    \ datetime, timedelta, timezone\n\n\ndef parse_utc(value: str) -> datetime:\n\
+    \    \"\"\"Parse an ISO timestamp into an aware UTC datetime.\n\n    Naive inputs\
+    \ are assumed to already be UTC.\n    \"\"\"\n    dt = datetime.fromisoformat(value.replace(\"\
+    Z\", \"+00:00\"))\n    if dt.tzinfo is None:\n        return dt\n    return dt.astimezone(timezone.utc)\n\
+    \n\ndef is_within_shift(at: str | datetime, start: str | datetime, minutes: int)\
+    \ -> bool:\n    \"\"\"True when ``at`` falls in [start, start + minutes).\n\n\
+    \    BUG: mixes naive/aware comparisons and ignores the shift length.\n    \"\"\
+    \"\n    at_dt = at if isinstance(at, datetime) else parse_utc(at)\n    start_dt\
+    \ = start if isinstance(start, datetime) else parse_utc(start)\n    end_dt = start_dt\
+    \ + timedelta(minutes=minutes)\n    return start_dt <= at_dt <= end_dt\n"
+grader:
+  type: unit_tests
+  tests:
+    test_shifts.py: "import pytest\n\nfrom shifts import is_within_shift, parse_utc\n\
+      \n\ndef test_parse_utc_naive_assumed_utc():\n    dt = parse_utc(\"2026-01-02T03:04:05\"\
+      )\n    assert dt.utcoffset() is not None\n\n\ndef test_parse_utc_converts_offset():\n\
+      \    dt = parse_utc(\"2026-01-02T05:04:05+02:00\")\n    assert dt.hour == 3\n\
+      \n\ndef test_within_shift_basic():\n    assert is_within_shift(\"2026-01-02T00:30:00Z\"\
+      , \"2026-01-02T00:00:00Z\", 60)\n\n\ndef test_after_shift_end():\n    assert\
+      \ not is_within_shift(\"2026-01-02T01:00:00+00:00\", \"2026-01-02T00:00:00Z\"\
+      , 60)\n\n\ndef test_offset_inputs_normalized():\n    assert is_within_shift(\"\
+      2026-01-02T02:30:00+02:00\", \"2026-01-02T00:00:00Z\", 60)\n\n\ndef test_naive_vs_aware_mix_does_not_crash():\n\
+      \    try:\n        out = is_within_shift(\"2026-01-02T00:30:00\", \"2026-01-02T01:00:00+02:00\"\
+      , 120)\n    except TypeError:\n        raise AssertionError(\"naive/aware comparison\
+      \ crashed\") from None\n    assert out is True\n"

@@ -1,0 +1,68 @@
+id: thread-pool-deadlock
+suite: coding
+title: Eliminate deadlock from nested queue handoff
+category: concurrency
+difficulty: 5
+target_file: pipeline.py
+max_turns: 1
+timeout_s: 300
+prompt: 'You are given a small Python project with a bug or missing behavior.
+
+
+  Problem: Pipeline.submit waits forever when the pool is saturated because workers
+  block on the same queue their callbacks feed; restructure so submit never blocks
+  on worker completion.
+
+
+  Files currently in the workspace:
+
+  - pipeline.py
+
+
+
+  '
+files:
+  pipeline.py: "\"\"\"Two-stage pipeline with a result registry.\"\"\"\n\nimport threading\n\
+    from collections.abc import Callable\n\n\nclass Pipeline:\n    \"\"\"Runs callables\
+    \ on background threads; collect() gathers results.\"\"\"\n\n    def __init__(self,\
+    \ workers: int = 4) -> None:\n        self.workers = workers\n        self._tasks:\
+    \ list[Callable[[], None]] = []\n        self._results: dict[int, object] = {}\n\
+    \        self._lock = threading.Lock()\n        self._done = threading.Event()\n\
+    \n    def _worker(self, idx: int) -> None:\n        # BUG: worker holds nothing\
+    \ useful, but submit() below blocks the\n        # main thread while workers wait\
+    \ on tasks that are never appended.\n        while True:\n            task = None\n\
+    \            with self._lock:\n                if self._tasks:\n             \
+    \       task = self._tasks.pop(0)\n            if task is None:\n            \
+    \    if self._done.is_set():\n                    return\n                continue\n\
+    \            result = task()\n\n    def start(self) -> None:\n        self._threads\
+    \ = [\n            threading.Thread(target=self._worker, args=(i,), daemon=True)\n\
+    \            for i in range(self.workers)\n        ]\n        for t in self._threads:\n\
+    \            t.start()\n\n    def submit(self, fn: Callable[[], object], task_id:\
+    \ int, timeout: float = 0.5) -> bool:\n        \"\"\"Queue fn; must never block\
+    \ indefinitely even when workers are busy.\"\"\"\n        done_here = threading.Event()\n\
+    \n        def wrapped() -> None:\n            value = fn()\n            with self._lock:\n\
+    \                self._results[task_id] = value\n            done_here.set()\n\
+    \n        with self._lock:\n            self._tasks.append(wrapped)\n        \
+    \    # BUG: waits for completion while holding the registry lock, so\n       \
+    \     # the worker cannot pop the task or record its result.\n            finished\
+    \ = done_here.wait(timeout)\n        return finished\n\n    def collect(self)\
+    \ -> dict:\n        with self._lock:\n            return dict(self._results)\n\
+    \n    def shutdown(self) -> None:\n        self._done.set()\n"
+grader:
+  type: unit_tests
+  tests:
+    test_pipeline.py: "import time\n\nfrom pipeline import Pipeline\n\n\ndef test_submit_returns_without_waiting_for_completion():\n\
+      \    p = Pipeline(workers=2)\n    p.start()\n    started = time.monotonic()\n\
+      \    ok = p.submit(lambda: time.sleep(0.2) or \"slow\", task_id=1, timeout=0.05)\n\
+      \    elapsed = time.monotonic() - started\n    assert elapsed < 0.19, \"submit\
+      \ blocked until the task finished\"\n    p.shutdown()\n\n\ndef test_results_eventually_available():\n\
+      \    p = Pipeline(workers=2)\n    p.start()\n    p.submit(lambda: 10, task_id=1)\n\
+      \    deadline = time.monotonic() + 2\n    while time.monotonic() < deadline\
+      \ and 1 not in p.collect():\n        time.sleep(0.01)\n    assert p.collect()[1]\
+      \ == 10\n    p.shutdown()\n\n\ndef test_many_tasks_no_deadlock():\n    p = Pipeline(workers=2)\n\
+      \    p.start()\n    for i in range(50):\n        assert p.submit(lambda v=i:\
+      \ v, task_id=i, timeout=1.0)\n    deadline = time.monotonic() + 5\n    while\
+      \ time.monotonic() < deadline and len(p.collect()) < 50:\n        time.sleep(0.01)\n\
+      \    assert len(p.collect()) == 50\n    p.shutdown()\n\n\ndef test_collect_snapshot_is_copy():\n\
+      \    p = Pipeline(workers=1)\n    p.start()\n    snap = p.collect()\n    snap[\"\
+      x\"] = 1\n    assert \"x\" not in p.collect()\n    p.shutdown()\n"

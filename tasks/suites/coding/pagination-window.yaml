@@ -1,0 +1,48 @@
+id: pagination-window
+suite: coding
+title: Fix pagination window slicing off-by-one
+category: off-by-one
+difficulty: 2
+target_file: paginate.py
+max_turns: 1
+timeout_s: 300
+prompt: 'You are given a small Python project with a bug or missing behavior.
+
+
+  Problem: page_window drops the last item of every page.
+
+
+  Files currently in the workspace:
+
+  - paginate.py
+
+
+
+  '
+files:
+  paginate.py: "\"\"\"Helpers for offset-based pagination.\"\"\"\n\n\ndef total_pages(item_count:\
+    \ int, page_size: int) -> int:\n    \"\"\"Number of pages needed for item_count\
+    \ items.\"\"\"\n    if item_count < 0 or page_size < 1:\n        raise ValueError(\"\
+    invalid arguments\")\n    return (item_count + page_size - 1) // page_size\n\n\
+    \ndef page_window(items: list, page: int, page_size: int) -> list:\n    \"\"\"\
+    Return the 0-based ``page`` slice; IndexError when out of range.\"\"\"\n    if\
+    \ page_size < 1:\n        raise ValueError(\"page_size must be >= 1\")\n    last\
+    \ = total_pages(len(items), page_size)\n    if page < 0 or page >= last:\n   \
+    \     raise IndexError(\"page out of range\")\n    start = page * page_size\n\
+    \    return items[start : start + page_size - 1]\n\n\ndef paginate_all(items:\
+    \ list, page_size: int) -> list[list]:\n    \"\"\"Split items into consecutive\
+    \ pages.\"\"\"\n    return [page_window(items, p, page_size) for p in range(total_pages(len(items),\
+    \ page_size))]\n"
+grader:
+  type: unit_tests
+  tests:
+    test_paginate.py: "import pytest\n\nfrom paginate import page_window, paginate_all,\
+      \ total_pages\n\n\ndef test_total_pages():\n    assert total_pages(10, 3) ==\
+      \ 4\n    assert total_pages(0, 5) == 0\n    assert total_pages(9, 3) == 3\n\n\
+      \ndef test_window_no_overlap():\n    pages = paginate_all(list(range(10)), 3)\n\
+      \    flat = [x for p in pages for x in p]\n    assert flat == list(range(10))\n\
+      \n\ndef test_window_exact_page():\n    assert page_window(list(range(6)), 1,\
+      \ 3) == [3, 4, 5]\n\n\ndef test_out_of_range():\n    with pytest.raises(IndexError):\n\
+      \        page_window([1, 2], 2, 2)\n\n\ndef test_bad_page_size():\n    with\
+      \ pytest.raises(ValueError):\n        page_window([1], 0, 0)\n\n\ndef test_empty_items():\n\
+      \    assert paginate_all([], 4) == []\n"
