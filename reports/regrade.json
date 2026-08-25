@@ -1,0 +1,50 @@
+{
+  "baseline": "strict",
+  "attempts": 7,
+  "baseline_passed": 1,
+  "baseline_pass_rate": 0.14285714285714285,
+  "policies": {
+    "strict": {
+      "attempts": 7,
+      "passed": 1,
+      "pass_rate": 0.14285714285714285,
+      "delta_vs_baseline": 0.0,
+      "submissions_changed": 0,
+      "recovered": [],
+      "broken": [],
+      "malformed": 0
+    },
+    "largest_block": {
+      "attempts": 7,
+      "passed": 1,
+      "pass_rate": 0.14285714285714285,
+      "delta_vs_baseline": 0.0,
+      "submissions_changed": 0,
+      "recovered": [],
+      "broken": [],
+      "malformed": 0
+    },
+    "concat_blocks": {
+      "attempts": 7,
+      "passed": 1,
+      "pass_rate": 0.14285714285714285,
+      "delta_vs_baseline": 0.0,
+      "submissions_changed": 0,
+      "recovered": [],
+      "broken": [],
+      "malformed": 0
+    },
+    "splice": {
+      "attempts": 7,
+      "passed": 2,
+      "pass_rate": 0.2857142857142857,
+      "delta_vs_baseline": 0.14285714285714285,
+      "submissions_changed": 3,
+      "recovered": [
+        "poolside/laguna-s-2.1:free / generator-streaming-memory"
+      ],
+      "broken": [],
+      "malformed": 0
+    }
+  }
+}

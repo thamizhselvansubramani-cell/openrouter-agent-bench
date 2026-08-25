@@ -130,17 +130,27 @@ Read these as illustrative harness output, not as a model ranking:
   sibling definitions the hidden tests import and fails at collection. That is
   indistinguishable from wrong logic in the score.
 
-  `bench regrade` measures the gap. A worked example, using a *correct* fix
-  packaged as a fragment:
+  `bench regrade` measures the gap. Replaying 7 stored completions from
+  `poolside/laguna-s-2.1:free` against the hidden tests under four policies
+  ([`reports/regrade.json`](reports/regrade.json)):
 
-  | Policy | Verdict |
-  | --- | --- |
-  | `strict` (shipped) | fail -- `1 error during collection` |
-  | `splice` | pass -- `7 passed` |
+  | Policy | Passed | Delta | Submissions altered |
+  | --- | --- | --- | --- |
+  | `strict` (shipped) | 1/7 | baseline | 0 |
+  | `largest_block` | 1/7 | +0.0 pts | 0 |
+  | `concat_blocks` | 1/7 | +0.0 pts | 0 |
+  | `splice` | **2/7** | **+14.3 pts** | 3 |
 
-  Same reply, opposite verdicts. Any `coding` number here therefore mixes
-  submission formatting with correctness, and the ratio is an open question on
-  this task set rather than something the run establishes.
+  Splicing doubles the pass rate. The recovered task is instructive:
+  on `generator-streaming-memory` the model used the `### FILE:` marker
+  correctly and its `running_mean` fix was right, but it emitted only that
+  function. Overwriting the file deleted the untouched `chunked` alongside it,
+  the tests import both, and the module failed at collection -- scored
+  identically to wrong logic.
+
+  So some fraction of the `coding` zeros above is packaging, not reasoning.
+  With 7 completions from one model this is a demonstration of the mechanism,
+  not an estimate of its prevalence; it needs a full corpus to quantify.
 - **One attempt per task is not enough to rank anything.** Over 17 binary trials
   the confidence interval is roughly ±20 points. Raise `--repeats` for pass@k if
   you want to compare models rather than exercise the harness.
@@ -148,6 +158,13 @@ Read these as illustrative harness output, not as a model ranking:
 Three further catalogued models never ran: two returned upstream 429s and
 `thinkingmachines/inkling-small:free` returns 403 (`only available on agentic
 harnesses`).
+
+**Free endpoints are not stable.** `nvidia/nemotron-3-nano-30b-a3b:free`
+completed all 17 tasks for the run above, then began returning HTTP 404 --
+*"This model is unavailable for free. The paid version is available now"* --
+about a day later. A free-tier result is a measurement of a moving target, and
+the harness records the resolved served model and provider on every attempt so
+that drift is at least visible after the fact.
 
 ## Web dashboard
 

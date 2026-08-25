@@ -320,12 +320,12 @@ def summarize_regrade(
         n = len(outs)
         passed = sum(1 for o in outs if o.passed)
         recovered = sorted(
-            f"{o.model}:{o.task_id}"
+            f"{o.model} / {o.task_id}"
             for o in outs
             if o.passed and baseline.get((o.task_id, o.model)) is False
         )
         broken = sorted(
-            f"{o.model}:{o.task_id}"
+            f"{o.model} / {o.task_id}"
             for o in outs
             if not o.passed and baseline.get((o.task_id, o.model)) is True
         )

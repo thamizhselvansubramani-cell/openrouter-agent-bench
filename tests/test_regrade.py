@@ -231,8 +231,8 @@ def test_summary_computes_delta_and_names_flipped_attempts() -> None:
     splice = report["policies"]["splice"]
     assert splice["pass_rate"] == 0.5
     assert splice["delta_vs_baseline"] == 0.0
-    assert splice["recovered"] == ["m:t1"]
-    assert splice["broken"] == ["m:t2"]
+    assert splice["recovered"] == ["m / t1"]
+    assert splice["broken"] == ["m / t2"]
     assert splice["submissions_changed"] == 1
 
 
