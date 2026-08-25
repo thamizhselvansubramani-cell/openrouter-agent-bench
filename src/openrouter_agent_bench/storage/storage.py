@@ -15,7 +15,7 @@ from dataclasses import asdict, is_dataclass
 from datetime import UTC, datetime
 from typing import Any
 
-from sqlmodel import Field, Session, SQLModel, create_engine, select
+from sqlmodel import Field, Session, SQLModel, create_engine, select, text
 
 from openrouter_agent_bench.agent.runner import AttemptResult, RunConfig
 
@@ -34,6 +34,14 @@ class BenchRun(SQLModel, table=True):
     )
     #: JSON-serialized :class:`RunConfig`.
     config_json: str = "{}"
+    # --- provenance: what produced this run (see provenance.run_provenance) ---
+    harness_version: str | None = None
+    #: Harness git commit, suffixed ``-dirty`` if the work tree was modified.
+    git_sha: str | None = None
+    #: Digest over the (task_id, prompt) pairs actually run.
+    suite_hash: str | None = None
+    python_version: str | None = None
+    platform: str | None = None
 
 
 class AttemptRow(SQLModel, table=True):
@@ -55,6 +63,14 @@ class AttemptRow(SQLModel, table=True):
     total_tokens: int = 0
     detail: str = ""
     error: str | None = None
+    #: The model's raw reply, kept so an attempt can be re-graded or audited
+    #: without re-querying the API.
+    answer: str = ""
+    #: Model the provider actually served (differs from ``model`` for routers).
+    served_model: str | None = None
+    provider: str | None = None
+    generation_id: str | None = None
+    finish_reason: str | None = None
 
 
 def _config_to_json(config: RunConfig | dict[str, Any] | None) -> str:
@@ -76,6 +92,41 @@ class ResultStore:
             self.path.parent.mkdir(parents=True, exist_ok=True)
         self._engine = create_engine(f"sqlite:///{self.path}")
         SQLModel.metadata.create_all(self._engine)
+        self._migrate()
+
+    def _migrate(self) -> None:
+        """Add columns introduced after a database was first created.
+
+        ``create_all`` only creates missing *tables*, so a database written by
+        an older harness keeps its old column set. Rather than fail on insert,
+        add anything missing in place -- SQLite ``ADD COLUMN`` is cheap, and
+        non-nullable columns are backfilled with the model's own default so
+        rows predating the column still satisfy their declared type on read.
+        """
+        for table_name in (BenchRun.__tablename__, AttemptRow.__tablename__):
+            table = SQLModel.metadata.tables[str(table_name)]
+            with self._engine.begin() as conn:
+                rows = conn.execute(text(f"PRAGMA table_info({table_name})")).fetchall()
+                existing = {row[1] for row in rows}
+                if not existing:
+                    continue
+                for name, column in table.columns.items():
+                    if name in existing:
+                        continue
+                    try:
+                        py_type: type = column.type.python_type
+                    except NotImplementedError:
+                        py_type = str
+                    decl = {
+                        int: "INTEGER",
+                        float: "FLOAT",
+                        bool: "BOOLEAN",
+                    }.get(py_type, "TEXT")
+                    default = getattr(column.default, "arg", None)
+                    if not column.nullable and default is not None:
+                        literal = repr(default) if isinstance(default, str) else default
+                        decl += f" NOT NULL DEFAULT {literal}"
+                    conn.execute(text(f"ALTER TABLE {table_name} ADD COLUMN {name} {decl}"))
 
     def start_run(
         self,
@@ -84,13 +135,22 @@ class ResultStore:
         suite: str = "",
         label: str = "",
         config: RunConfig | dict[str, Any] | None = None,
+        provenance: dict[str, str | None] | None = None,
     ) -> int:
-        """Create a new run row and return its id."""
+        """Create a new run row and return its id.
+
+        ``provenance`` is the mapping returned by
+        :func:`~openrouter_agent_bench.provenance.run_provenance`; unknown keys
+        are ignored so the caller can pass it through verbatim.
+        """
+        known = {"harness_version", "git_sha", "suite_hash", "python_version", "platform"}
+        prov = {k: v for k, v in (provenance or {}).items() if k in known}
         run = BenchRun(
             model=model,
             suite=suite,
             label=label,
             config_json=_config_to_json(config),
+            **prov,
         )
         with Session(self._engine) as session:
             session.add(run)
@@ -115,8 +175,13 @@ class ResultStore:
             prompt_tokens=result.prompt_tokens,
             completion_tokens=result.completion_tokens,
             total_tokens=result.total_tokens,
-            detail=result.detail[:2000],
+            detail=result.detail,
             error=result.error,
+            answer=result.answer,
+            served_model=result.served_model,
+            provider=result.provider,
+            generation_id=result.generation_id,
+            finish_reason=result.finish_reason,
         )
         with Session(self._engine) as session:
             session.add(row)
@@ -141,8 +206,13 @@ class ResultStore:
                         prompt_tokens=result.prompt_tokens,
                         completion_tokens=result.completion_tokens,
                         total_tokens=result.total_tokens,
-                        detail=result.detail[:2000],
+                        detail=result.detail,
                         error=result.error,
+                        answer=result.answer,
+                        served_model=result.served_model,
+                        provider=result.provider,
+                        generation_id=result.generation_id,
+                        finish_reason=result.finish_reason,
                     )
                 )
             session.commit()

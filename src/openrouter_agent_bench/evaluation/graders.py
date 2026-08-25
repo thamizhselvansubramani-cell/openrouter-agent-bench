@@ -166,12 +166,21 @@ def grade_unit_tests(
     test_files = list(grader.tests.keys())
     results = sandbox.run_pytest(workspace, test_files, timeout_s=min(task.timeout_s, 300))
     passed = results.ok
-    summary = (results.stdout or "").strip().splitlines()
-    tail = "\n".join(summary[-5:]) if summary else results.stderr[-400:]
+    # Keep the full pytest output. A five-line tail loses the traceback,
+    # which is the only thing that distinguishes "the model's logic is
+    # wrong" from "the submission was not a complete importable module" —
+    # the difference you need when a whole suite scores zero. The sandbox
+    # already clips runaway output, so this stays bounded.
+    stdout = (results.stdout or "").strip()
+    stderr = (results.stderr or "").strip()
+    detail = stdout
+    if stderr:
+        joined = f"{detail}\n--- stderr ---\n{stderr}"
+        detail = joined if detail else stderr
     return GradeResult(
         passed=passed,
         score=1.0 if passed else 0.0,
-        detail=tail,
+        detail=detail,
         fault="test_crash" if results.timed_out else None,
     )
 

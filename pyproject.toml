@@ -85,6 +85,12 @@ src = ["src", "tests"]
 select = ["E", "F", "W", "I", "UP", "B", "SIM", "RUF"]
 ignore = ["SIM108"]
 
+[tool.ruff.lint.flake8-bugbear]
+# Typer declares CLI parameters as call results in argument defaults. The
+# returned *Info objects are inert descriptors, not shared mutable state, so
+# B008 does not apply to them.
+extend-immutable-calls = ["typer.Argument", "typer.Option"]
+
 [tool.coverage.run]
 source = ["src/openrouter_agent_bench"]
 omit = ["src/openrouter_agent_bench/cli/*"]

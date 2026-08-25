@@ -10,6 +10,7 @@ A production-grade, model-agnostic LLM benchmarking harness for OpenRouter model
 - **Model registry** — declarative catalog in `models.yaml` (context windows, capabilities, per-million-token pricing).
 - **Task suites** — pydantic-validated benchmark tasks in `tasks/suites/` with pluggable graders: `exact_match`, `unit_tests` (sandboxed pytest), `llm_judge`, and `keyed_facts`. Ships three suites: `coding` (bug-fix / refactor, sandboxed tests), `agentic` (single-turn planning, tool-selection, debugging), and `long_context` (needle-in-haystack retrieval).
 - **Sandboxed execution** — subprocess runner with network blocking and environment sanitization.
+- **Reproducible results** — every run records the harness version, git commit (flagged `-dirty` when the tree is modified), a hash of the exact tasks used, and the interpreter and platform. Every attempt stores the model's raw reply plus the *resolved* served model, provider and generation id, so a result can be re-graded or audited without re-querying, and a score against a routed endpoint stays attributable.
 - **Web dashboard** — FastAPI backend + single-page frontend for browsing models/suites and chatting with any registered model through the client.
 
 ## Installation
@@ -69,6 +70,11 @@ uv run bench run coding -m stealth/ox-alpha --limit 4 --label smoke
 # Re-report a stored run as a table, Markdown, and/or a pass-rate chart:
 uv run bench report                       # latest run, console tables
 uv run bench report --run 1 --markdown report.md --plot passrates.png
+
+# Combine many result databases into one comparison table + figure:
+uv run bench compare reports/runs/*.db \
+    --out-json reports/results.json \
+    --out-plot reports/model-comparison.png
 ```
 
 `bench run` requires `OPENROUTER_API_KEY`. Paid models are rejected while
@@ -80,6 +86,14 @@ tasks are graded by executing the hidden pytest files inside the sandbox.
 
 A run of all three suites against the live free-tier models, produced entirely by
 the harness. Full aggregates are in [`reports/results.json`](reports/results.json).
+
+The raw result databases are published under [`reports/runs/`](reports/runs/), and
+both the table and the figure below regenerate from them with a single command,
+so every number here traces back to stored data:
+
+```bash
+uv run bench compare reports/runs/*.db
+```
 
 ![Model comparison](reports/model-comparison.png)
 
@@ -200,10 +214,12 @@ src/openrouter_agent_bench/
 ├── reporting/     # Result aggregation, tables, Markdown + plots
 ├── sandbox/       # Sandboxed subprocess execution
 ├── server/        # FastAPI app + static web dashboard
-├── storage/       # SQLite results store (SQLModel)
+├── provenance.py  # Run provenance: version, git sha, suite hash, environment
+├── storage/       # SQLite results store (SQLModel) + in-place schema migration
 └── tasks/         # TaskSpec schema + suite loading/validation
 
 reports/           # Generated charts, dashboard screenshots, aggregated results
+reports/runs/      # Published raw result databases behind the figures
 tasks/suites/      # Benchmark task definitions (coding, agentic, long_context)
 ```
 

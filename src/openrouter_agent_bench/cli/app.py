@@ -22,7 +22,14 @@ from rich.table import Table
 from openrouter_agent_bench.agent.runner import AttemptResult, RunConfig, run_task
 from openrouter_agent_bench.client.api import OpenRouterClient
 from openrouter_agent_bench.config import get_settings, load_env_file
+from openrouter_agent_bench.evaluation.graders import build_prompt
 from openrouter_agent_bench.models.registry import ModelRegistry, ModelSpec
+from openrouter_agent_bench.provenance import run_provenance
+from openrouter_agent_bench.reporting.compare import (
+    aggregate,
+    plot_comparison,
+    write_comparison,
+)
 from openrouter_agent_bench.reporting.report import (
     TABLE_HEADERS,
     GroupSummary,
@@ -218,7 +225,16 @@ def run(
     run_id: int | None = None
     if not no_store:
         store = ResultStore(db)
-        run_id = store.start_run(model=model, suite=suite, label=label, config=config)
+        run_id = store.start_run(
+            model=model,
+            suite=suite,
+            label=label,
+            config=config,
+            provenance=run_provenance(
+                task_ids_and_prompts=[(spec.id, build_prompt(spec)) for spec in tasks],
+                repo_root=_repo_root(),
+            ),
+        )
 
     results = asyncio.run(
         _run_all(
@@ -318,6 +334,74 @@ def report(
             summarize_by_task(attempts), plot, title=f"Run #{run_id} pass rate"
         )
         console.print(f"[green]Plot written:[/green] {out}")
+
+
+@app.command()
+def compare(
+    dbs: list[str] = typer.Argument(
+        ..., help="Result databases to combine (one per model is typical)."
+    ),
+    out_json: str = typer.Option(
+        "reports/results.json", "--out-json", help="Where to write aggregate JSON."
+    ),
+    out_plot: str = typer.Option(
+        "reports/model-comparison.png", "--out-plot", help="Where to write the figure."
+    ),
+    title: str = typer.Option("Model comparison", "--title", help="Figure title."),
+    subtitle: str = typer.Option("", "--subtitle", help="Figure subtitle."),
+) -> None:
+    """Aggregate several result databases into one comparison table and figure.
+
+    Regenerates the published data and chart from stored results, so every
+    reported number traces back to this command.
+    """
+    missing = [d for d in dbs if not pathlib.Path(d).is_file()]
+    if missing:
+        console.print(f"[red]No such database:[/red] {', '.join(missing)}")
+        raise typer.Exit(code=1)
+
+    data = aggregate(dbs)
+    if not data["models"]:
+        console.print("[yellow]No attempts found in the given databases.[/yellow]")
+        raise typer.Exit(code=0)
+
+    table = Table(title="Model comparison", header_style="bold cyan")
+    for header in ("Model", "Graded", "Passed", "Pass rate", "Mean latency", "Faults", "Coverage"):
+        table.add_column(header, justify="right" if header != "Model" else "left")
+    total = data["total_tasks"]
+    for m in data["models"]:
+        rate = "n/a" if m["pass_rate"] is None else f"{m['pass_rate'] * 100:.1f}%"
+        lat = "n/a" if m["mean_latency_s"] is None else f"{m['mean_latency_s']:.2f}s"
+        table.add_row(
+            m["model"],
+            str(m["graded"]),
+            f"{m['passed']}/{m['graded']}",
+            rate,
+            lat,
+            str(m["faults"]),
+            "complete" if m["complete"] else f"{m['tasks_seen']}/{total}",
+        )
+    console.print(table)
+
+    incomplete = [m for m in data["models"] if not m["complete"]]
+    if incomplete:
+        console.print(
+            f"[yellow]{len(incomplete)} of {len(data['models'])} models did not cover "
+            f"all {total} tasks; their pass rates are not comparable.[/yellow]"
+        )
+    routed = [m for m in data["models"] if len(m["served_models"]) > 1]
+    for m in routed:
+        console.print(
+            f"[yellow]{m['model']} was served by {len(m['served_models'])} different "
+            f"models[/yellow] ({', '.join(m['served_models'])}); its score is not "
+            "attributable to a single model."
+        )
+
+    console.print(f"[green]Aggregate written:[/green] {write_comparison(data, out_json)}")
+    console.print(
+        "[green]Figure written:[/green] "
+        f"{plot_comparison(data, out_plot, title=title, subtitle=subtitle)}"
+    )
 
 
 @app.command()

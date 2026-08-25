@@ -82,7 +82,12 @@ class CompletionResponse(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
     id: str | None = None
+    #: Model id the provider actually served. May differ from the requested id
+    #: for routed endpoints (e.g. ``openrouter/free``), so it is recorded
+    #: separately for provenance.
     model: str | None = None
+    #: Upstream provider that served the request, when OpenRouter reports it.
+    provider: str | None = None
     content: str | None = None
     reasoning_content: str | None = None
     tool_calls: list[ToolCall] | None = None

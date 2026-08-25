@@ -5,19 +5,25 @@
     "long_context"
   ],
   "total_tasks": 17,
+  "graded_attempts": 56,
+  "faulted_attempts": 19,
+  "total_cost": 0.0,
   "models": [
     {
       "model": "stealth/ox-alpha",
       "attempts_total": 8,
       "graded": 8,
       "faults": 0,
+      "fault_kinds": [],
       "passed": 5,
       "pass_rate": 0.625,
+      "tasks_seen": 8,
       "complete": false,
       "mean_latency_s": 37.796749999999996,
       "total_tokens": 30201,
-      "mean_completion_tokens": 1035.875,
       "total_cost": 0.0,
+      "served_models": [],
+      "providers": [],
       "per_suite": {
         "agentic": {
           "attempts": 3,
@@ -41,13 +47,16 @@
       "attempts_total": 17,
       "graded": 17,
       "faults": 0,
+      "fault_kinds": [],
       "passed": 6,
       "pass_rate": 0.35294117647058826,
+      "tasks_seen": 17,
       "complete": true,
       "mean_latency_s": 15.594647058823528,
       "total_tokens": 38179,
-      "mean_completion_tokens": 639.7058823529412,
       "total_cost": 0.0,
+      "served_models": [],
+      "providers": [],
       "per_suite": {
         "agentic": {
           "attempts": 3,
@@ -71,13 +80,16 @@
       "attempts_total": 17,
       "graded": 17,
       "faults": 0,
+      "fault_kinds": [],
       "passed": 4,
       "pass_rate": 0.23529411764705882,
+      "tasks_seen": 17,
       "complete": true,
       "mean_latency_s": 12.422882352941176,
       "total_tokens": 54542,
-      "mean_completion_tokens": 1546.0,
       "total_cost": 0.0,
+      "served_models": [],
+      "providers": [],
       "per_suite": {
         "agentic": {
           "attempts": 3,
@@ -101,13 +113,19 @@
       "attempts_total": 12,
       "graded": 6,
       "faults": 6,
+      "fault_kinds": [
+        "api_error",
+        "malformed_submission"
+      ],
       "passed": 1,
       "pass_rate": 0.16666666666666666,
+      "tasks_seen": 6,
       "complete": false,
       "mean_latency_s": 45.171666666666674,
       "total_tokens": 13774,
-      "mean_completion_tokens": 2155.0,
       "total_cost": 0.0,
+      "served_models": [],
+      "providers": [],
       "per_suite": {
         "agentic": {
           "attempts": 0,
@@ -131,13 +149,18 @@
       "attempts_total": 16,
       "graded": 8,
       "faults": 8,
+      "fault_kinds": [
+        "api_error"
+      ],
       "passed": 1,
       "pass_rate": 0.125,
+      "tasks_seen": 8,
       "complete": false,
       "mean_latency_s": 40.025375000000004,
       "total_tokens": 26365,
-      "mean_completion_tokens": 3158.25,
       "total_cost": 0.0,
+      "served_models": [],
+      "providers": [],
       "per_suite": {
         "agentic": {
           "attempts": 0,
@@ -161,13 +184,18 @@
       "attempts_total": 5,
       "graded": 0,
       "faults": 5,
+      "fault_kinds": [
+        "api_error"
+      ],
       "passed": 0,
       "pass_rate": null,
+      "tasks_seen": 0,
       "complete": false,
       "mean_latency_s": null,
       "total_tokens": 0,
-      "mean_completion_tokens": null,
       "total_cost": 0,
+      "served_models": [],
+      "providers": [],
       "per_suite": {
         "agentic": {
           "attempts": 0,

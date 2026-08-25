@@ -165,6 +165,7 @@ def parse_response(data: dict[str, Any], latency_s: float) -> CompletionResponse
     return CompletionResponse(
         id=data.get("id"),
         model=data.get("model"),
+        provider=data.get("provider"),
         content=message.get("content"),
         reasoning_content=message.get("reasoning_content") or message.get("reasoning"),
         tool_calls=tool_calls or None,

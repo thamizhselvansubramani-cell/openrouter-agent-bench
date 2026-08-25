@@ -17,3 +17,6 @@ build/
 # Local run artifacts
 *.db
 *.log
+
+# ...but the published run data behind reports/ is part of the record
+!reports/runs/*.db

@@ -74,6 +74,13 @@ class AttemptResult(BaseModel):
     total_tokens: int = 0
     retries: int = 0
     answer: str = ""
+    #: Provenance of the completion. ``served_model`` is what the provider
+    #: actually ran, which differs from ``model`` for routed endpoints;
+    #: ``generation_id`` is the upstream id for auditing a single call.
+    served_model: str | None = None
+    provider: str | None = None
+    generation_id: str | None = None
+    finish_reason: str | None = None
     error: str | None = None
     created_at: str = Field(default_factory=lambda: datetime.now(UTC).isoformat())
 
@@ -135,6 +142,7 @@ async def run_attempt(
                 "fault": "grader_error",
                 "error": f"{type(exc).__name__}: {exc}",
                 "answer": answer,
+                **_provenance(response),
                 "latency_s": usage_latency(response),
                 "cost": usage.cost,
                 "prompt_tokens": usage.prompt_tokens,
@@ -155,8 +163,19 @@ async def run_attempt(
             "completion_tokens": usage.completion_tokens,
             "total_tokens": usage.total_tokens,
             "answer": answer,
+            **_provenance(response),
         }
     )
+
+
+def _provenance(response: CompletionResponse) -> dict[str, str | None]:
+    """Provenance fields worth persisting alongside a graded attempt."""
+    return {
+        "served_model": response.model,
+        "provider": response.provider,
+        "generation_id": response.id,
+        "finish_reason": response.finish_reason,
+    }
 
 
 def usage_latency(response: CompletionResponse) -> float:
