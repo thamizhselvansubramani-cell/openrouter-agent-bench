@@ -78,35 +78,46 @@ tasks are graded by executing the hidden pytest files inside the sandbox.
 
 ## Example results
 
-A run of all three suites against the live free-tier models. Aggregates are in
-[`reports/results.json`](reports/results.json).
+A run of all three suites against the live free-tier models, produced entirely by
+the harness. Full aggregates are in [`reports/results.json`](reports/results.json).
 
 ![Model comparison](reports/model-comparison.png)
 
-| Model | Pass rate | Coverage |
-| --- | --- | --- |
-| `poolside/laguna-s-2.1:free` | **35%** (6/17) | complete |
-| `stealth/ox-alpha` | 25% (1/4) | partial |
-| `nvidia/nemotron-3-nano-30b-a3b:free` | 24% (4/17) | complete |
-| `openrouter/free` | 17% (1/6) | partial |
-| `nvidia/nemotron-3-super-120b-a12b:free` | 12% (1/8) | partial |
-| `cohere/north-mini-code:free` | — | no graded attempts |
+| Model | Overall | `coding` | `agentic` | `long_context` | Coverage |
+| --- | --- | --- | --- | --- | --- |
+| `poolside/laguna-s-2.1:free` | 35% (6/17) | 8% (1/12) | 100% (3/3) | 100% (2/2) | complete |
+| `nvidia/nemotron-3-nano-30b-a3b:free` | 24% (4/17) | 0% (0/12) | 67% (2/3) | 100% (2/2) | complete |
+| `stealth/ox-alpha` | 62% (5/8) | 0% (0/3) | 100% (3/3) | 100% (2/2) | partial — 8/17 |
+| `nvidia/nemotron-3-super-120b-a12b:free` | 12% (1/8) | 12% (1/8) | — | — | partial — 8/17 |
+| `openrouter/free` | 17% (1/6) | 17% (1/6) | — | — | partial — 6/17 |
+| `cohere/north-mini-code:free` | — | — | — | — | rate-limited out |
 
-Conditions: temperature 0.0, one attempt per task, $0.00 total cost.
+Conditions: temperature 0.0, one attempt per task, 56 graded attempts and 19
+faults, $0.00 total cost.
 
-Two caveats on these numbers:
+Read these as illustrative harness output, not as a model ranking:
 
-- **The run is incomplete.** The OpenRouter free tier caps you at 50 requests per
-  day, and that cap was reached mid-run. Only two models finished all 17 tasks;
-  the striped bars in the chart mark the partial ones and are labelled with the
-  task count they actually cover, since a rate over 4 tasks is not comparable to
-  one over 17. Three further catalogued models never ran at all — two returned
-  upstream 429s and `thinkingmachines/inkling-small:free` returns 403
-  (`only available on agentic harnesses`).
-- **The low `coding` scores are genuine model failures, not grader faults.** The
-  suites split sharply: 67–100% on `agentic` and `long_context` against 0–8% on
-  `coding`. Spot-checking the stored failures shows real assertion failures and
-  submitted code that fails to import, not extraction or sandbox problems.
+- **Only two models completed all 17 tasks.** The OpenRouter free tier caps you at
+  50 requests per day and that cap was reached mid-run. The striped bars in the
+  chart mark the partial runs. `stealth/ox-alpha` scores highest at 62%, but it
+  only got through 8 tasks and 5 of those were the `agentic` and `long_context`
+  suites it does well on — it never attempted 9 of the 12 `coding` tasks. That
+  number is a coverage artifact, not a win.
+- **`openrouter/free` is a router, not a model.** Its score can't be attributed to
+  any particular model, since the request may be served by a different one each
+  time. It is listed here because the harness supports the endpoint.
+- **A zero on `coding` has two possible causes.** The `unit_tests` grader writes
+  the submitted block over the target file and runs the hidden tests, so a model
+  that returns only a fixed fragment rather than the whole file fails collection
+  and scores zero. The harness does not currently separate that from genuinely
+  incorrect logic.
+- **One attempt per task is not enough to rank anything.** Over 17 binary trials
+  the confidence interval is roughly ±20 points. Raise `--repeats` for pass@k if
+  you want to compare models rather than exercise the harness.
+
+Three further catalogued models never ran: two returned upstream 429s and
+`thinkingmachines/inkling-small:free` returns 403 (`only available on agentic
+harnesses`).
 
 ## Web dashboard
 

@@ -7,6 +7,36 @@
   "total_tasks": 17,
   "models": [
     {
+      "model": "stealth/ox-alpha",
+      "attempts_total": 8,
+      "graded": 8,
+      "faults": 0,
+      "passed": 5,
+      "pass_rate": 0.625,
+      "complete": false,
+      "mean_latency_s": 37.796749999999996,
+      "total_tokens": 30201,
+      "mean_completion_tokens": 1035.875,
+      "total_cost": 0.0,
+      "per_suite": {
+        "agentic": {
+          "attempts": 3,
+          "passed": 3,
+          "pass_rate": 1.0
+        },
+        "coding": {
+          "attempts": 3,
+          "passed": 0,
+          "pass_rate": 0.0
+        },
+        "long_context": {
+          "attempts": 2,
+          "passed": 2,
+          "pass_rate": 1.0
+        }
+      }
+    },
+    {
       "model": "poolside/laguna-s-2.1:free",
       "attempts_total": 17,
       "graded": 17,
@@ -33,36 +63,6 @@
           "attempts": 2,
           "passed": 2,
           "pass_rate": 1.0
-        }
-      }
-    },
-    {
-      "model": "stealth/ox-alpha",
-      "attempts_total": 4,
-      "graded": 4,
-      "faults": 0,
-      "passed": 1,
-      "pass_rate": 0.25,
-      "complete": false,
-      "mean_latency_s": 32.039,
-      "total_tokens": 5267,
-      "mean_completion_tokens": 1116.5,
-      "total_cost": 0.0,
-      "per_suite": {
-        "agentic": {
-          "attempts": 1,
-          "passed": 1,
-          "pass_rate": 1.0
-        },
-        "coding": {
-          "attempts": 3,
-          "passed": 0,
-          "pass_rate": 0.0
-        },
-        "long_context": {
-          "attempts": 0,
-          "passed": 0,
-          "pass_rate": null
         }
       }
     },
@@ -98,9 +98,9 @@
     },
     {
       "model": "openrouter/free",
-      "attempts_total": 8,
+      "attempts_total": 12,
       "graded": 6,
-      "faults": 2,
+      "faults": 6,
       "passed": 1,
       "pass_rate": 0.16666666666666666,
       "complete": false,
@@ -128,9 +128,9 @@
     },
     {
       "model": "nvidia/nemotron-3-super-120b-a12b:free",
-      "attempts_total": 12,
+      "attempts_total": 16,
       "graded": 8,
-      "faults": 4,
+      "faults": 8,
       "passed": 1,
       "pass_rate": 0.125,
       "complete": false,
@@ -158,9 +158,9 @@
     },
     {
       "model": "cohere/north-mini-code:free",
-      "attempts_total": 1,
+      "attempts_total": 5,
       "graded": 0,
-      "faults": 1,
+      "faults": 5,
       "passed": 0,
       "pass_rate": null,
       "complete": false,
@@ -254,28 +254,28 @@
       "passed": 0,
       "pass_rate": 0.0
     },
-    "repo-root-cause": {
-      "suite": "agentic",
-      "n": 2,
-      "passed": 1,
-      "pass_rate": 0.5
-    },
     "binary-search-boundary": {
       "suite": "coding",
       "n": 5,
       "passed": 3,
       "pass_rate": 0.6
     },
+    "repo-root-cause": {
+      "suite": "agentic",
+      "n": 3,
+      "passed": 2,
+      "pass_rate": 0.6666666666666666
+    },
     "needle-ops-log": {
       "suite": "long_context",
-      "n": 2,
-      "passed": 2,
+      "n": 3,
+      "passed": 3,
       "pass_rate": 1.0
     },
     "needle-policy-doc": {
       "suite": "long_context",
-      "n": 2,
-      "passed": 2,
+      "n": 3,
+      "passed": 3,
       "pass_rate": 1.0
     },
     "incident-triage-plan": {
@@ -286,8 +286,8 @@
     },
     "tool-selection-json": {
       "suite": "agentic",
-      "n": 2,
-      "passed": 2,
+      "n": 3,
+      "passed": 3,
       "pass_rate": 1.0
     }
   }
