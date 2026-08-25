@@ -20,3 +20,4 @@ build/
 
 # ...but the published run data behind reports/ is part of the record
 !reports/runs/*.db
+!reports/corpus/*.db

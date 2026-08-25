@@ -13,6 +13,7 @@ Subcommands:
 from __future__ import annotations
 
 import asyncio
+import json
 import pathlib
 
 import typer
@@ -23,6 +24,11 @@ from openrouter_agent_bench.agent.runner import AttemptResult, RunConfig, run_ta
 from openrouter_agent_bench.client.api import OpenRouterClient
 from openrouter_agent_bench.config import get_settings, load_env_file
 from openrouter_agent_bench.evaluation.graders import build_prompt
+from openrouter_agent_bench.evaluation.regrade import (
+    POLICIES,
+    regrade_attempt,
+    summarize_regrade,
+)
 from openrouter_agent_bench.models.registry import ModelRegistry, ModelSpec
 from openrouter_agent_bench.provenance import run_provenance
 from openrouter_agent_bench.reporting.compare import (
@@ -45,7 +51,7 @@ from openrouter_agent_bench.tasks.loader import (
     default_suites_root,
     load_suites,
 )
-from openrouter_agent_bench.tasks.schema import TaskSpec
+from openrouter_agent_bench.tasks.schema import TaskSpec, UnitTestGrader
 
 app = typer.Typer(
     add_completion=False,
@@ -402,6 +408,121 @@ def compare(
         "[green]Figure written:[/green] "
         f"{plot_comparison(data, out_plot, title=title, subtitle=subtitle)}"
     )
+
+
+@app.command()
+def regrade(
+    dbs: list[str] = typer.Argument(
+        ..., help="Result databases holding stored completions."
+    ),
+    policies: str = typer.Option(
+        ",".join(POLICIES), "--policies", help="Comma-separated extraction policies."
+    ),
+    suite: str = typer.Option("coding", "--suite", help="Suite to regrade."),
+    out_json: str | None = typer.Option(
+        None, "--out-json", help="Write the full regrade report here."
+    ),
+) -> None:
+    """Re-score stored completions under alternative extraction policies.
+
+    Measures how much of a unit_tests score reflects submission formatting
+    rather than correctness. Makes no API calls: it replays the stored replies
+    against the hidden tests, so it is free to run and repeatable.
+    """
+    wanted = [p.strip() for p in policies.split(",") if p.strip()]
+    unknown = [p for p in wanted if p not in POLICIES]
+    if unknown:
+        console.print(f"[red]Unknown policy:[/red] {', '.join(unknown)}")
+        console.print(f"Available: {', '.join(POLICIES)}")
+        raise typer.Exit(code=1)
+
+    missing = [d for d in dbs if not pathlib.Path(d).is_file()]
+    if missing:
+        console.print(f"[red]No such database:[/red] {', '.join(missing)}")
+        raise typer.Exit(code=1)
+
+    try:
+        loaded = load_suites(_suites_root(), names=[suite])
+    except TaskValidationError as exc:
+        console.print(f"[red]{exc}[/red]")
+        raise typer.Exit(code=1) from exc
+    tasks = {t.id: t for t in loaded[suite].tasks if isinstance(t.grader, UnitTestGrader)}
+    if not tasks:
+        console.print(f"[yellow]Suite {suite} has no unit_tests tasks.[/yellow]")
+        raise typer.Exit(code=0)
+
+    # Collect stored completions. Attempts predating raw-answer persistence
+    # cannot be replayed, so report them rather than counting them as zeros.
+    corpus: list[tuple[str, str, str]] = []
+    without_answer = 0
+    for db in dbs:
+        store = ResultStore(db)
+        for run in store.runs():
+            if run.id is None:
+                continue
+            for row in store.attempts(run.id):
+                if row.task_id not in tasks or row.fault == "api_error":
+                    continue
+                if not row.answer:
+                    without_answer += 1
+                    continue
+                corpus.append((row.task_id, row.model, row.answer))
+
+    if without_answer:
+        console.print(
+            f"[yellow]{without_answer} stored attempt(s) have no saved reply[/yellow] "
+            "and cannot be regraded (recorded before raw completions were kept)."
+        )
+    if not corpus:
+        console.print("[yellow]Nothing to regrade.[/yellow]")
+        raise typer.Exit(code=0)
+
+    console.print(
+        f"Regrading {len(corpus)} completion(s) under {len(wanted)} policies "
+        f"({len(corpus) * len(wanted)} sandboxed test runs, no API calls)."
+    )
+    outcomes = []
+    for policy in wanted:
+        for task_id, model, answer in corpus:
+            outcomes.append(
+                regrade_attempt(tasks[task_id], answer, policy, model=model)
+            )
+        done = [o for o in outcomes if o.policy == policy]
+        console.print(
+            f"  {policy:15} {sum(1 for o in done if o.passed)}/{len(done)} passed"
+        )
+
+    report = summarize_regrade(outcomes, wanted)
+    table = Table(title=f"Extraction-policy ablation ({suite})", header_style="bold cyan")
+    for header in ("Policy", "Passed", "Pass rate", "Delta", "Changed", "Recovered", "Broken"):
+        table.add_column(header, justify="left" if header == "Policy" else "right")
+    for policy in wanted:
+        stats = report["policies"].get(policy)
+        if not stats:
+            continue
+        delta = stats["delta_vs_baseline"]
+        table.add_row(
+            policy,
+            f"{stats['passed']}/{stats['attempts']}",
+            f"{(stats['pass_rate'] or 0) * 100:.1f}%",
+            "baseline" if policy == report["baseline"] else f"{delta * 100:+.1f} pts",
+            str(stats["submissions_changed"]),
+            str(len(stats["recovered"])),
+            str(len(stats["broken"])),
+        )
+    console.print(table)
+
+    for policy in wanted:
+        stats = report["policies"].get(policy) or {}
+        for label, key in (("recovered by", "recovered"), ("broken by", "broken")):
+            if stats.get(key):
+                console.print(f"[dim]{label} {policy}:[/dim] {', '.join(stats[key])}")
+
+    if out_json:
+        out = pathlib.Path(out_json)
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_text(json.dumps(report, indent=2), encoding="utf-8")
+        console.print(f"[green]Report written:[/green] {out}")
 
 
 @app.command()

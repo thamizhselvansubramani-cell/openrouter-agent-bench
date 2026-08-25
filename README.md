@@ -10,6 +10,7 @@ A production-grade, model-agnostic LLM benchmarking harness for OpenRouter model
 - **Model registry** — declarative catalog in `models.yaml` (context windows, capabilities, per-million-token pricing).
 - **Task suites** — pydantic-validated benchmark tasks in `tasks/suites/` with pluggable graders: `exact_match`, `unit_tests` (sandboxed pytest), `llm_judge`, and `keyed_facts`. Ships three suites: `coding` (bug-fix / refactor, sandboxed tests), `agentic` (single-turn planning, tool-selection, debugging), and `long_context` (needle-in-haystack retrieval).
 - **Sandboxed execution** — subprocess runner with network blocking and environment sanitization.
+- **Offline re-grading** — because raw replies are stored, `bench regrade` re-scores a fixed corpus of completions under alternative submission-extraction policies (`strict`, `largest_block`, `concat_blocks`, `splice`) and reports the delta. This separates *packaging* failures from *reasoning* failures without spending a single API call.
 - **Reproducible results** — every run records the harness version, git commit (flagged `-dirty` when the tree is modified), a hash of the exact tasks used, and the interpreter and platform. Every attempt stores the model's raw reply plus the *resolved* served model, provider and generation id, so a result can be re-graded or audited without re-querying, and a score against a routed endpoint stays attributable.
 - **Web dashboard** — FastAPI backend + single-page frontend for browsing models/suites and chatting with any registered model through the client.
 
@@ -71,6 +72,9 @@ uv run bench run coding -m stealth/ox-alpha --limit 4 --label smoke
 uv run bench report                       # latest run, console tables
 uv run bench report --run 1 --markdown report.md --plot passrates.png
 
+# Re-score stored replies under alternative extraction policies (no API calls):
+uv run bench regrade reports/corpus/*.db --out-json reports/regrade.json
+
 # Combine many result databases into one comparison table + figure:
 uv run bench compare reports/runs/*.db \
     --out-json reports/results.json \
@@ -121,10 +125,22 @@ Read these as illustrative harness output, not as a model ranking:
   any particular model, since the request may be served by a different one each
   time. It is listed here because the harness supports the endpoint.
 - **A zero on `coding` has two possible causes.** The `unit_tests` grader writes
-  the submitted block over the target file and runs the hidden tests, so a model
-  that returns only a fixed fragment rather than the whole file fails collection
-  and scores zero. The harness does not currently separate that from genuinely
-  incorrect logic.
+  the submitted block over the target file, so a model that returns only the
+  corrected function -- a reasonable reading of "fix this bug" -- drops the
+  sibling definitions the hidden tests import and fails at collection. That is
+  indistinguishable from wrong logic in the score.
+
+  `bench regrade` measures the gap. A worked example, using a *correct* fix
+  packaged as a fragment:
+
+  | Policy | Verdict |
+  | --- | --- |
+  | `strict` (shipped) | fail -- `1 error during collection` |
+  | `splice` | pass -- `7 passed` |
+
+  Same reply, opposite verdicts. Any `coding` number here therefore mixes
+  submission formatting with correctness, and the ratio is an open question on
+  this task set rather than something the run establishes.
 - **One attempt per task is not enough to rank anything.** Over 17 binary trials
   the confidence interval is roughly ±20 points. Raise `--repeats` for pass@k if
   you want to compare models rather than exercise the harness.
@@ -209,7 +225,7 @@ src/openrouter_agent_bench/
 ├── cli/           # `bench` Typer CLI (run, report, models, suites, validate)
 ├── client/        # Async OpenRouter client, schemas, cost estimation
 ├── config.py      # .env loading + Settings facade
-├── evaluation/    # Graders (exact_match, unit_tests, llm_judge, keyed_facts)
+├── evaluation/    # Graders + offline re-grading under extraction policies
 ├── models/        # Model registry (models.yaml)
 ├── reporting/     # Result aggregation, tables, Markdown + plots
 ├── sandbox/       # Sandboxed subprocess execution
@@ -220,6 +236,7 @@ src/openrouter_agent_bench/
 
 reports/           # Generated charts, dashboard screenshots, aggregated results
 reports/runs/      # Published raw result databases behind the figures
+reports/corpus/    # Stored completions for offline re-grading
 tasks/suites/      # Benchmark task definitions (coding, agentic, long_context)
 ```
 
